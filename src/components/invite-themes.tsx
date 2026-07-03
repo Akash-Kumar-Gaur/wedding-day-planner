@@ -13,12 +13,35 @@ export interface InviteCardProps {
 const cardBase = "flex h-full w-full flex-col items-center justify-center px-16 text-center";
 const sans = "'Inter', sans-serif";
 
-type EventListDensity = "comfortable" | "cozy" | "compact";
+type EventListDensity = "comfortable" | "cozy" | "tight";
+
+const OVERFLOW_EVENT_CAP = 6;
 
 function eventListDensity(count: number): EventListDensity {
-  if (count >= 6) return "compact";
-  if (count >= 5) return "cozy";
+  if (count >= 6) return "tight";
+  if (count >= 4) return "cozy";
   return "comfortable";
+}
+
+function eventListStyles(density: EventListDensity) {
+  switch (density) {
+    case "tight":
+      return { gap: 6, nameSize: 14, metaSize: 12, metaMarginTop: 2, lineHeight: 1.25 };
+    case "cozy":
+      return { gap: 12, nameSize: 17, metaSize: 14, metaMarginTop: 3, lineHeight: 1.3 };
+    default:
+      return { gap: 20, nameSize: 20, metaSize: 17, metaMarginTop: 4, lineHeight: 1.35 };
+  }
+}
+
+function partitionInviteEvents(events: InviteEventDetail[]) {
+  if (events.length < 8) {
+    return { visible: events, overflow: 0 };
+  }
+  return {
+    visible: events.slice(0, OVERFLOW_EVENT_CAP),
+    overflow: events.length - OVERFLOW_EVENT_CAP,
+  };
 }
 
 function InviteEventList({
@@ -30,10 +53,9 @@ function InviteEventList({
   nameColor: string;
   metaColor: string;
 }) {
-  const density = eventListDensity(events.length);
-  const gap = density === "comfortable" ? 20 : density === "cozy" ? 14 : 8;
-  const nameSize = density === "comfortable" ? 20 : density === "cozy" ? 17 : 15;
-  const metaSize = density === "comfortable" ? 17 : density === "cozy" ? 14 : 13;
+  const { visible, overflow } = partitionInviteEvents(events);
+  const density = eventListDensity(visible.length);
+  const { gap, nameSize, metaSize, metaMarginTop, lineHeight } = eventListStyles(density);
 
   if (events.length === 0) {
     return (
@@ -54,63 +76,45 @@ function InviteEventList({
         textAlign: "center",
       }}
     >
-      {events.map((event) =>
-        density === "compact" ? (
+      {visible.map((event) => (
+        <div key={`${event.name}-${event.dateLabel}`}>
           <p
-            key={`${event.name}-${event.dateLabel}`}
             style={{
               fontFamily: sans,
-              fontSize: metaSize,
-              lineHeight: 1.35,
-              color: metaColor,
+              fontSize: nameSize,
+              fontWeight: 500,
+              lineHeight,
+              color: nameColor,
               margin: 0,
             }}
           >
-            <span style={{ fontWeight: 500, color: nameColor }}>{event.name}</span>
-            {" — "}
-            {event.dateLabel}
+            {event.name}
           </p>
-        ) : (
-          <div key={`${event.name}-${event.dateLabel}`}>
-            <p
-              style={{
-                fontFamily: sans,
-                fontSize: nameSize,
-                fontWeight: 500,
-                lineHeight: 1.3,
-                color: nameColor,
-                margin: 0,
-              }}
-            >
-              {event.name}
-            </p>
-            <p
-              style={{
-                fontFamily: sans,
-                fontSize: metaSize,
-                lineHeight: 1.35,
-                color: metaColor,
-                margin: "4px 0 0",
-              }}
-            >
-              {event.dateLabel}
-              {event.venue ? ` · ${event.venue}` : ""}
-            </p>
-          </div>
-        ),
-      )}
-      {density === "compact" ? (
+          <p
+            style={{
+              fontFamily: sans,
+              fontSize: metaSize,
+              lineHeight,
+              color: metaColor,
+              margin: `${metaMarginTop}px 0 0`,
+            }}
+          >
+            {event.dateLabel}
+            {event.venue ? ` · ${event.venue}` : ""}
+          </p>
+        </div>
+      ))}
+      {overflow > 0 ? (
         <p
           style={{
             fontFamily: sans,
-            fontSize: 12,
-            fontStyle: "italic",
-            lineHeight: 1.3,
+            fontSize: metaSize,
+            lineHeight,
             color: metaColor,
-            margin: "4px 0 0",
+            margin: "2px 0 0",
           }}
         >
-          Venue details on request
+          + {overflow} more — details in the app
         </p>
       ) : null}
     </div>
@@ -119,19 +123,19 @@ function InviteEventList({
 
 function titleScale(eventCount: number): string {
   if (eventCount >= 6) return "text-4xl";
-  if (eventCount >= 5) return "text-[2.75rem]";
+  if (eventCount >= 4) return "text-[2.75rem]";
   return "text-5xl";
 }
 
 function headerGap(eventCount: number): string {
   if (eventCount >= 6) return "mt-5";
-  if (eventCount >= 5) return "mt-6";
+  if (eventCount >= 4) return "mt-6";
   return "mt-8";
 }
 
 function dividerMargin(eventCount: number): string {
   if (eventCount >= 6) return "my-5";
-  if (eventCount >= 5) return "my-6";
+  if (eventCount >= 4) return "my-6";
   return "my-8";
 }
 
@@ -175,9 +179,9 @@ export function FloralInviteCard({ coupleNames, events, location }: InviteCardPr
 }
 
 export function MinimalInviteCard({ coupleNames, events, location }: InviteCardProps) {
-  const titleMt = events.length >= 6 ? "mt-8" : events.length >= 5 ? "mt-10" : "mt-12";
-  const eventsMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-10";
-  const locationMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-12";
+  const titleMt = events.length >= 6 ? "mt-8" : events.length >= 4 ? "mt-10" : "mt-12";
+  const eventsMt = events.length >= 6 ? "mt-6" : events.length >= 4 ? "mt-8" : "mt-10";
+  const locationMt = events.length >= 6 ? "mt-6" : events.length >= 4 ? "mt-8" : "mt-12";
 
   return (
     <div className={cn(cardBase, "bg-[#FBF7F0]")} style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
@@ -187,7 +191,7 @@ export function MinimalInviteCard({ coupleNames, events, location }: InviteCardP
       <h1
         className={cn(
           titleMt,
-          events.length >= 6 ? "text-3xl" : events.length >= 5 ? "text-[2rem]" : "text-4xl",
+          events.length >= 6 ? "text-3xl" : events.length >= 4 ? "text-[2rem]" : "text-4xl",
           "font-medium tracking-tight text-[#2C2418]",
         )}
       >
@@ -208,7 +212,7 @@ export function MinimalInviteCard({ coupleNames, events, location }: InviteCardP
 
 export function RoyalInviteCard({ coupleNames, events, location }: InviteCardProps) {
   const divider = dividerMargin(events.length);
-  const innerPy = events.length >= 6 ? "py-10" : events.length >= 5 ? "py-12" : "py-16";
+  const innerPy = events.length >= 6 ? "py-10" : events.length >= 4 ? "py-12" : "py-16";
 
   return (
     <div
@@ -261,9 +265,9 @@ export function RoyalInviteCard({ coupleNames, events, location }: InviteCardPro
 }
 
 export function PastelInviteCard({ coupleNames, events, location }: InviteCardProps) {
-  const innerPy = events.length >= 6 ? "py-10" : events.length >= 5 ? "py-12" : "py-14";
-  const eventsMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-10";
-  const locationMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-10";
+  const innerPy = events.length >= 6 ? "py-10" : events.length >= 4 ? "py-12" : "py-14";
+  const eventsMt = events.length >= 6 ? "mt-6" : events.length >= 4 ? "mt-8" : "mt-10";
+  const locationMt = events.length >= 6 ? "mt-6" : events.length >= 4 ? "mt-8" : "mt-10";
 
   return (
     <div
@@ -288,7 +292,7 @@ export function PastelInviteCard({ coupleNames, events, location }: InviteCardPr
         <h1
           className={cn(
             headerGap(events.length),
-            events.length >= 6 ? "text-3xl" : events.length >= 5 ? "text-[2rem]" : "text-4xl",
+            events.length >= 6 ? "text-3xl" : events.length >= 4 ? "text-[2rem]" : "text-4xl",
             "font-normal leading-tight text-[#4A3F55]",
           )}
         >

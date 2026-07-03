@@ -71,6 +71,13 @@ function InviteScreen() {
   });
 
   useEffect(() => {
+    setSelectedIds(new Set());
+    setTheme("floral");
+    setSavedInviteId(undefined);
+    setRestored(false);
+  }, [guestId, groupId]);
+
+  useEffect(() => {
     if (restored || !savedQuery.data) return;
     setSelectedIds(new Set(savedQuery.data.eventIds));
     setTheme(savedQuery.data.theme);
