@@ -11,9 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { TimelineEvent } from "@/data/wedding-types";
 import { fetchInviteForGroup, fetchInviteForGuest, upsertInvite } from "@/lib/invite-api";
 import {
-  INVITE_HEIGHT,
-  INVITE_WIDTH,
   downloadInvitePdf,
+  getCardDimensions,
   rasterizeInviteCard,
   shareInviteImage,
 } from "@/lib/invite-export";
@@ -123,6 +122,11 @@ function InviteScreen() {
     };
   }, [wedding, selectedEvents, inviteImageSeed]);
 
+  const cardDimensions = useMemo(
+    () => getCardDimensions(cardProps.events.length),
+    [cardProps.events.length],
+  );
+
   const ThemeComponent = INVITE_THEMES[theme].Component;
 
   const toggleEvent = (id: string) => {
@@ -151,7 +155,7 @@ function InviteScreen() {
     if (!cardRef.current || !wedding) return;
     setExporting(true);
     try {
-      const dataUrl = await rasterizeInviteCard(cardRef.current);
+      const dataUrl = await rasterizeInviteCard(cardRef.current, cardDimensions);
       await persistInvite();
 
       const safeName = targetLabel.replace(/[^\w\s-]/g, "").trim() || "guest";
@@ -160,7 +164,7 @@ function InviteScreen() {
       if (mode === "share") {
         await shareInviteImage(dataUrl, wedding.coupleNames);
       } else {
-        downloadInvitePdf(dataUrl, `${coupleSlug}-invite-${safeName}.pdf`);
+        downloadInvitePdf(dataUrl, `${coupleSlug}-invite-${safeName}.pdf`, cardDimensions);
         toast.success("PDF downloaded");
       }
     } catch (err) {
@@ -273,8 +277,8 @@ function InviteScreen() {
             <div
               className="overflow-hidden rounded-lg shadow-md"
               style={{
-                width: INVITE_WIDTH * PREVIEW_SCALE,
-                height: INVITE_HEIGHT * PREVIEW_SCALE,
+                width: cardDimensions.width * PREVIEW_SCALE,
+                height: cardDimensions.height * PREVIEW_SCALE,
               }}
             >
               <div
@@ -285,7 +289,7 @@ function InviteScreen() {
               >
                 <div
                   ref={cardRef}
-                  style={{ width: INVITE_WIDTH, height: INVITE_HEIGHT }}
+                  style={{ width: cardDimensions.width, height: cardDimensions.height }}
                   className="overflow-hidden"
                 >
                   <ThemeComponent {...cardProps} />

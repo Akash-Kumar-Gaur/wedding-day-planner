@@ -196,7 +196,10 @@ function RootContent() {
   const navigate = useNavigate();
 
   const isPublicPath =
-    pathname === "/login" || pathname === "/terms" || pathname === "/privacy";
+    pathname === "/login" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
+    pathname === "/intro";
 
   useEffect(() => {
     if (status === "unauthenticated" && !isPublicPath) {
@@ -224,8 +227,8 @@ function RootContent() {
     return <Outlet />;
   }
 
-  if (pathname === "/login") {
-    return null;
+  if (pathname === "/login" || pathname === "/intro") {
+    return <Outlet />;
   }
 
   return <AuthenticatedApp />;

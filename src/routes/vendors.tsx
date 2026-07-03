@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
-  Phone,
   Plus,
   Camera,
   Utensils,
@@ -30,6 +29,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { CateringHeadcountNote } from "@/components/catering-headcount-note";
 import { ScreenHeader, StatusBadge } from "@/components/app-shell";
+import { VendorCard } from "@/components/vendor-card";
 import { GetSuggestionsSheet } from "@/components/get-suggestions-sheet";
 import { GetSuggestionsLink, SectionEmptyState } from "@/components/get-suggestions-prompt";
 import type { Vendor, VendorCategory, VendorStatus } from "@/data/wedding-types";
@@ -143,60 +143,9 @@ function VendorsScreen() {
                 <span className="text-xs text-muted-foreground">· {list.length}</span>
               </div>
               <div className="space-y-3">
-                {list.map((v) => {
-                  const balance = v.totalCost - v.advancePaid;
-                  return (
-                    <Card
-                      key={v.id}
-                      role="button"
-                      onClick={() => setOpenVendor(v)}
-                      className="cursor-pointer rounded-2xl p-4 transition-colors hover:bg-muted/40"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">{v.name}</p>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {v.contactName || "No contact"}
-                          </p>
-                        </div>
-                        <StatusBadge
-                          status={
-                            v.status === "Paid"
-                              ? "done"
-                              : v.status === "Confirmed"
-                                ? "done"
-                                : "pending"
-                          }
-                        />
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <p className="text-muted-foreground">Advance paid</p>
-                          <p className="mt-0.5 font-medium text-foreground">
-                            {formatINR(v.advancePaid)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Balance due</p>
-                          <p
-                            className={cn(
-                              "mt-0.5 font-medium",
-                              balance > 0 ? "text-foreground" : "text-muted-foreground",
-                            )}
-                          >
-                            {formatINR(balance)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {v.phone || "—"}
-                        </span>
-                        <span>{v.dueDate ? `Due ${shortDate(v.dueDate)}` : "No due date"}</span>
-                      </div>
-                    </Card>
-                  );
-                })}
+                {list.map((v) => (
+                  <VendorCard key={v.id} vendor={v} onClick={() => setOpenVendor(v)} />
+                ))}
               </div>
             </section>
           );

@@ -17,6 +17,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InviteRouteImport } from './routes/invite'
+import { Route as IntroRouteImport } from './routes/intro'
 import { Route as GuestsRouteImport } from './routes/guests'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as IndexRouteImport } from './routes/index'
@@ -61,6 +62,11 @@ const InviteRoute = InviteRouteImport.update({
   path: '/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntroRoute = IntroRouteImport.update({
+  id: '/intro',
+  path: '/intro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GuestsRoute = GuestsRouteImport.update({
   id: '/guests',
   path: '/guests',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/intro': typeof IntroRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/intro': typeof IntroRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/intro': typeof IntroRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/checklist'
     | '/guests'
+    | '/intro'
     | '/invite'
     | '/login'
     | '/plan'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/checklist'
     | '/guests'
+    | '/intro'
     | '/invite'
     | '/login'
     | '/plan'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/checklist'
     | '/guests'
+    | '/intro'
     | '/invite'
     | '/login'
     | '/plan'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChecklistRoute: typeof ChecklistRoute
   GuestsRoute: typeof GuestsRoute
+  IntroRoute: typeof IntroRoute
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   PlanRoute: typeof PlanRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/intro': {
+      id: '/intro'
+      path: '/intro'
+      fullPath: '/intro'
+      preLoaderRoute: typeof IntroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/guests': {
       id: '/guests'
       path: '/guests'
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChecklistRoute: ChecklistRoute,
   GuestsRoute: GuestsRoute,
+  IntroRoute: IntroRoute,
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   PlanRoute: PlanRoute,
@@ -271,3 +292,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

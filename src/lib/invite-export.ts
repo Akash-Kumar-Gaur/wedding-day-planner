@@ -3,18 +3,55 @@ import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 
 export const INVITE_WIDTH = 1080;
-export const INVITE_HEIGHT = 1350;
 
-export async function rasterizeInviteCard(element: HTMLElement): Promise<string> {
-  await document.fonts.ready;
-  return toPng(element, {
+export interface InviteCardDimensions {
+  width: number;
+  height: number;
+}
+
+export function getCardDimensions(eventCount: number): InviteCardDimensions {
+  const baseHeight = 1080;
+  const heightPerExtraEvent = 90;
+  const extraEvents = Math.max(0, eventCount - 3);
+  return {
     width: INVITE_WIDTH,
-    height: INVITE_HEIGHT,
-    canvasWidth: INVITE_WIDTH,
-    canvasHeight: INVITE_HEIGHT,
-    pixelRatio: 2,
-    cacheBust: true,
-  });
+    height: baseHeight + extraEvents * heightPerExtraEvent,
+  };
+}
+
+/** Clone off-screen so preview scale transforms don't shrink the capture. */
+function cloneForExport(element: HTMLElement, dimensions: InviteCardDimensions): HTMLElement {
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone.style.position = "fixed";
+  clone.style.left = "-10000px";
+  clone.style.top = "0";
+  clone.style.transform = "none";
+  clone.style.width = `${dimensions.width}px`;
+  clone.style.height = `${dimensions.height}px`;
+  clone.style.margin = "0";
+  clone.style.pointerEvents = "none";
+  document.body.appendChild(clone);
+  return clone;
+}
+
+export async function rasterizeInviteCard(
+  element: HTMLElement,
+  dimensions: InviteCardDimensions,
+): Promise<string> {
+  await document.fonts.ready;
+
+  const clone = cloneForExport(element, dimensions);
+  try {
+    return await toPng(clone, {
+      width: dimensions.width,
+      height: dimensions.height,
+      pixelRatio: 2,
+      quality: 1,
+      cacheBust: true,
+    });
+  } finally {
+    document.body.removeChild(clone);
+  }
 }
 
 function dataUrlToFile(dataUrl: string, filename: string): File {
@@ -51,12 +88,16 @@ export async function shareInviteImage(
   toast.message("Image saved — attach it to WhatsApp manually.");
 }
 
-export function downloadInvitePdf(dataUrl: string, filename: string) {
+export function downloadInvitePdf(
+  dataUrl: string,
+  filename: string,
+  dimensions: InviteCardDimensions,
+) {
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "px",
-    format: [INVITE_WIDTH, INVITE_HEIGHT],
+    format: [dimensions.width, dimensions.height],
   });
-  pdf.addImage(dataUrl, "PNG", 0, 0, INVITE_WIDTH, INVITE_HEIGHT);
+  pdf.addImage(dataUrl, "PNG", 0, 0, dimensions.width, dimensions.height);
   pdf.save(filename);
 }
