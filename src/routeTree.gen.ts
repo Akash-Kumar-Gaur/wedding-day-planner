@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as GuestsRouteImport } from './routes/guests'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
   '/vendors': typeof VendorsRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
   '/vendors': typeof VendorsRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
   '/vendors': typeof VendorsRoute
+  '/wallet': typeof WalletRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checklist' | '/guests' | '/vendors'
+  fullPaths: '/' | '/checklist' | '/guests' | '/vendors' | '/wallet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checklist' | '/guests' | '/vendors'
-  id: '__root__' | '/' | '/checklist' | '/guests' | '/vendors'
+  to: '/' | '/checklist' | '/guests' | '/vendors' | '/wallet'
+  id: '__root__' | '/' | '/checklist' | '/guests' | '/vendors' | '/wallet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   ChecklistRoute: typeof ChecklistRoute
   GuestsRoute: typeof GuestsRoute
   VendorsRoute: typeof VendorsRoute
+  WalletRoute: typeof WalletRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vendors': {
       id: '/vendors'
       path: '/vendors'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChecklistRoute: ChecklistRoute,
   GuestsRoute: GuestsRoute,
   VendorsRoute: VendorsRoute,
+  WalletRoute: WalletRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
