@@ -59,7 +59,7 @@ export function ScreenHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/90 px-5 pb-4 pt-5 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-border bg-background/90 px-5 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] backdrop-blur">
       {eyebrow ? (
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p>
       ) : null}
