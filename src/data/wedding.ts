@@ -1,4 +1,4 @@
-// Mock data for Wedding Ops. Shapes mirror a realistic relational schema
+// Mock data for ShadiPlan. Shapes mirror a realistic relational schema
 // so this can be swapped for Supabase queries later.
 
 export type VendorCategory =

@@ -32,12 +32,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/vendors")({
   head: () => ({
     meta: [
-      { title: "Vendors — Wedding Ops" },
+      { title: "Vendors — ShadiPlan" },
       {
         name: "description",
         content: "Track every wedding vendor, their payments, contacts and confirmation status.",
       },
-      { property: "og:title", content: "Vendors — Wedding Ops" },
+      { property: "og:title", content: "Vendors — ShadiPlan" },
       {
         property: "og:description",
         content: "Track vendor payments and status for a multi-day wedding.",
@@ -82,7 +82,7 @@ function VendorsScreen() {
 
   return (
     <div>
-      <ScreenHeader eyebrow="Wedding Ops" title="Vendors">
+      <ScreenHeader eyebrow="ShadiPlan" title="Vendors">
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>All</FilterChip>
           <FilterChip active={filter === "due"} onClick={() => setFilter("due")}>Payment due</FilterChip>

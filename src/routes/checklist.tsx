@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/checklist")({
   head: () => ({
     meta: [
-      { title: "Checklist — Wedding Ops" },
+      { title: "Checklist — ShadiPlan" },
       { name: "description", content: "Day-by-day timeline of every ceremony, with venues and dress codes." },
-      { property: "og:title", content: "Checklist — Wedding Ops" },
+      { property: "og:title", content: "Checklist — ShadiPlan" },
       { property: "og:description", content: "Multi-day wedding timeline, ceremony by ceremony." },
     ],
   }),
@@ -34,7 +34,7 @@ function ChecklistScreen() {
 
   return (
     <div>
-      <ScreenHeader eyebrow="Wedding Ops" title="Checklist">
+      <ScreenHeader eyebrow="ShadiPlan" title="Checklist">
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {DAYS.map((d) => (
             <button

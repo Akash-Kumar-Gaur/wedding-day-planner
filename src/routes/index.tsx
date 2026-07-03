@@ -61,7 +61,7 @@ function Index() {
     <div>
       <ScreenHeader eyebrow={WEDDING.location} title={WEDDING.coupleNames}>
         <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" /> Wedding ops · 4 days, 3 venues
+          <MapPin className="h-3.5 w-3.5" /> ShadiPlan · 4 days, 3 venues
         </p>
       </ScreenHeader>
 

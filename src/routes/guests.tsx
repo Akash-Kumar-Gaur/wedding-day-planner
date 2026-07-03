@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/guests")({
   head: () => ({
     meta: [
-      { title: "Guests — Wedding Ops" },
+      { title: "Guests — ShadiPlan" },
       { name: "description", content: "Track RSVPs, meal preferences, and accommodation for every wedding guest." },
-      { property: "og:title", content: "Guests — Wedding Ops" },
+      { property: "og:title", content: "Guests — ShadiPlan" },
       { property: "og:description", content: "Guest list, RSVPs and logistics in one place." },
     ],
   }),
@@ -48,7 +48,7 @@ function GuestsScreen() {
 
   return (
     <div>
-      <ScreenHeader eyebrow="Wedding Ops" title="Guests">
+      <ScreenHeader eyebrow="ShadiPlan" title="Guests">
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           <MiniStat label="Invited" value={total} />
           <MiniStat label="Confirmed" value={confirmed} tone="good" />

@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/wallet")({
   head: () => ({
     meta: [
-      { title: "Wallet — Wedding Ops" },
+      { title: "Wallet — ShadiPlan" },
       { name: "description", content: "Budget, category spend, and every wedding transaction in one place." },
-      { property: "og:title", content: "Wallet — Wedding Ops" },
+      { property: "og:title", content: "Wallet — ShadiPlan" },
       { property: "og:description", content: "Track spending against your wedding budget by category." },
     ],
   }),
@@ -32,7 +32,7 @@ function WalletScreen() {
 
   return (
     <div>
-      <ScreenHeader eyebrow="Wedding Ops" title="Wallet" />
+      <ScreenHeader eyebrow="ShadiPlan" title="Wallet" />
 
       <div className="space-y-5 px-5 pt-5">
         <Card className="rounded-2xl p-5">
