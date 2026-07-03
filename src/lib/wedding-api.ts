@@ -13,11 +13,13 @@ import type {
   PlanningTask,
   TimelineEvent,
   Transaction,
+  UpdateExpenseInput,
   UpdateGuestInput,
   Vendor,
   VendorCategory,
   VendorStatus,
   Wedding,
+  WeddingCollaborator,
 } from "@/data/wedding-types";
 
 type WeddingRow = {
@@ -56,6 +58,7 @@ type PaymentRow = {
 function mapWedding(row: WeddingRow): Wedding {
   return {
     id: row.id,
+    ownerId: row.owner_id,
     coupleNames: row.couple_names,
     location: row.location ?? "",
     date: row.wedding_date,
@@ -116,6 +119,66 @@ export async function updateWeddingOnboardingMode(
   if (error) throw error;
 }
 
+export async function resolveUserWedding(userId: string, userEmail: string): Promise<Wedding | null> {
+  const normalizedEmail = userEmail.trim().toLowerCase();
+
+  const { data: owned, error: ownedError } = await supabase
+    .from("weddings")
+    .select("*")
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (ownedError) throw ownedError;
+  if (owned) return mapWedding(owned as WeddingRow);
+
+  const { data: pending, error: pendingError } = await supabase
+    .from("wedding_collaborators")
+    .select("id, wedding_id")
+    .eq("email", normalizedEmail)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (pendingError) throw pendingError;
+
+  if (pending) {
+    const { error: acceptError } = await supabase
+      .from("wedding_collaborators")
+      .update({
+        user_id: userId,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+      })
+      .eq("id", pending.id);
+    if (acceptError) throw acceptError;
+
+    const { data: wedding, error: weddingError } = await supabase
+      .from("weddings")
+      .select("*")
+      .eq("id", pending.wedding_id)
+      .single();
+    if (weddingError) throw weddingError;
+    return mapWedding(wedding as WeddingRow);
+  }
+
+  const { data: membership, error: memberError } = await supabase
+    .from("wedding_collaborators")
+    .select("wedding_id")
+    .eq("user_id", userId)
+    .eq("status", "accepted")
+    .maybeSingle();
+  if (memberError) throw memberError;
+  if (membership) {
+    const { data: wedding, error: weddingError } = await supabase
+      .from("weddings")
+      .select("*")
+      .eq("id", membership.wedding_id)
+      .single();
+    if (weddingError) throw weddingError;
+    return mapWedding(wedding as WeddingRow);
+  }
+
+  return null;
+}
+
+/** @deprecated Use resolveUserWedding */
 export async function fetchWeddingForUser(userId: string): Promise<Wedding | null> {
   const { data, error } = await supabase
     .from("weddings")
@@ -125,6 +188,58 @@ export async function fetchWeddingForUser(userId: string): Promise<Wedding | nul
 
   if (error) throw error;
   return data ? mapWedding(data as WeddingRow) : null;
+}
+
+type CollaboratorRow = {
+  id: string;
+  wedding_id: string;
+  email: string;
+  user_id: string | null;
+  status: string;
+  invited_at: string;
+  accepted_at: string | null;
+};
+
+function mapCollaborator(row: CollaboratorRow): WeddingCollaborator {
+  return {
+    id: row.id,
+    weddingId: row.wedding_id,
+    email: row.email,
+    userId: row.user_id,
+    status: row.status === "accepted" ? "accepted" : "pending",
+    invitedAt: row.invited_at,
+    acceptedAt: row.accepted_at,
+  };
+}
+
+export async function fetchCollaborators(weddingId: string): Promise<WeddingCollaborator[]> {
+  const { data, error } = await supabase
+    .from("wedding_collaborators")
+    .select("*")
+    .eq("wedding_id", weddingId)
+    .order("invited_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => mapCollaborator(row as CollaboratorRow));
+}
+
+export async function inviteCollaborator(
+  weddingId: string,
+  email: string,
+): Promise<WeddingCollaborator> {
+  const normalized = email.trim().toLowerCase();
+  const { data, error } = await supabase
+    .from("wedding_collaborators")
+    .insert({
+      wedding_id: weddingId,
+      email: normalized,
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapCollaborator(data as CollaboratorRow);
 }
 
 export async function createWedding(
@@ -146,7 +261,7 @@ export async function createWedding(
 
   if (error) throw error;
   const wedding = mapWedding(data as WeddingRow);
-  await seedDefaultBudgetCategories(wedding.id, input.totalBudget ?? null);
+  await seedDefaultBudgetCategories(wedding.id);
   return wedding;
 }
 
@@ -187,33 +302,76 @@ export async function redistributeBudgetPlanned(
   if (failed?.error) throw failed.error;
 }
 
-const DEFAULT_BUDGET_CATEGORIES = [
+export const DEFAULT_BUDGET_CATEGORIES = [
   "Venue",
   "Catering",
   "Photography",
   "Decor",
-  "Music",
-  "Transport",
   "Attire",
+  "Transport",
+  "Music",
+  "Jewelry",
   "Misc",
 ] as const;
 
-async function seedDefaultBudgetCategories(
-  weddingId: string,
-  totalBudget: number | null | undefined,
-): Promise<void> {
-  const plannedEach =
-    totalBudget && totalBudget > 0
-      ? Math.round(totalBudget / DEFAULT_BUDGET_CATEGORIES.length)
-      : 0;
+async function seedDefaultBudgetCategories(weddingId: string): Promise<void> {
   const { error } = await supabase.from("budget_categories").insert(
     DEFAULT_BUDGET_CATEGORIES.map((name) => ({
       wedding_id: weddingId,
       name,
-      planned: plannedEach,
+      planned: 0,
       actual: 0,
     })),
   );
+  if (error) throw error;
+}
+
+export async function insertBudgetCategory(
+  weddingId: string,
+  input: { name: string; planned?: number },
+): Promise<BudgetCategory> {
+  const { data, error } = await supabase
+    .from("budget_categories")
+    .insert({
+      wedding_id: weddingId,
+      name: input.name.trim(),
+      planned: input.planned ?? 0,
+      actual: 0,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return {
+    id: data.id,
+    name: data.name,
+    planned: Number(data.planned),
+    actual: Number(data.actual),
+  };
+}
+
+export async function updateBudgetCategory(
+  weddingId: string,
+  id: string,
+  patch: { name?: string; planned?: number },
+): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (patch.name !== undefined) payload.name = patch.name.trim();
+  if (patch.planned !== undefined) payload.planned = patch.planned;
+  const { error } = await supabase
+    .from("budget_categories")
+    .update(payload)
+    .eq("wedding_id", weddingId)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteBudgetCategory(weddingId: string, id: string): Promise<void> {
+  const { error } = await supabase
+    .from("budget_categories")
+    .delete()
+    .eq("wedding_id", weddingId)
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -553,6 +711,37 @@ export async function fetchPlanningTasks(weddingId: string): Promise<PlanningTas
   return (data ?? []).map((row) => mapPlanningTask(row as PlanningTaskRow));
 }
 
+export async function insertPlanningTasks(
+  weddingId: string,
+  inputs: Array<Omit<PlanningTask, "id">>,
+): Promise<void> {
+  if (!inputs.length) return;
+  const { error } = await supabase.from("planning_tasks").insert(
+    inputs.map((input) => ({
+      wedding_id: weddingId,
+      task: input.task,
+      lead_time: input.leadTime,
+      category: input.category,
+      commonly_missed: input.commonlyMissed,
+      reason: input.reason ?? null,
+      done: input.done,
+      suggested_date: input.suggestedDate || null,
+      event_time: input.eventTime || null,
+      venue: input.venue || null,
+    })),
+  );
+  if (error) throw error;
+}
+
+export async function deletePlanningTask(weddingId: string, id: string): Promise<void> {
+  const { error } = await supabase
+    .from("planning_tasks")
+    .delete()
+    .eq("wedding_id", weddingId)
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function insertPlanningTask(
   weddingId: string,
   input: Omit<PlanningTask, "id">,
@@ -666,6 +855,16 @@ export async function fetchPendingSuggestions(weddingId: string): Promise<Pendin
   return (data ?? []).map((row) => mapPendingSuggestion(row as PendingSuggestionRow));
 }
 
+export async function fetchUsedSuggestionPoolItemIds(weddingId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("pending_suggestions")
+    .select("pool_item_id")
+    .eq("wedding_id", weddingId);
+
+  if (error) throw error;
+  return (data ?? []).map((r) => r.pool_item_id);
+}
+
 export async function syncPendingSuggestionsBatch(
   weddingId: string,
   items: Array<{
@@ -679,14 +878,13 @@ export async function syncPendingSuggestionsBatch(
   }>,
   opts?: { categories?: string[] },
 ): Promise<void> {
-  const { data: dismissed, error: dismissedError } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("pending_suggestions")
     .select("pool_item_id")
-    .eq("wedding_id", weddingId)
-    .eq("status", "dismissed");
+    .eq("wedding_id", weddingId);
 
-  if (dismissedError) throw dismissedError;
-  const dismissedIds = new Set((dismissed ?? []).map((r) => r.pool_item_id));
+  if (existingError) throw existingError;
+  const usedPoolIds = new Set((existing ?? []).map((r) => r.pool_item_id));
 
   let deleteQuery = supabase
     .from("pending_suggestions")
@@ -701,10 +899,10 @@ export async function syncPendingSuggestionsBatch(
   const { error: deleteError } = await deleteQuery;
   if (deleteError) throw deleteError;
 
-  const toInsert = items.filter((item) => !dismissedIds.has(item.poolItemId));
+  const toInsert = items.filter((item) => !usedPoolIds.has(item.poolItemId));
   if (!toInsert.length) return;
 
-  const { error: insertError } = await supabase.from("pending_suggestions").insert(
+  const { error: insertError } = await supabase.from("pending_suggestions").upsert(
     toInsert.map((item) => ({
       wedding_id: weddingId,
       pool_item_id: item.poolItemId,
@@ -716,6 +914,7 @@ export async function syncPendingSuggestionsBatch(
       status: "pending",
       batch_nonce: item.batchNonce,
     })),
+    { onConflict: "wedding_id,pool_item_id", ignoreDuplicates: true },
   );
 
   if (insertError) throw insertError;
@@ -873,6 +1072,106 @@ export async function insertTransaction(
   return mapTransaction(data as TransactionRow);
 }
 
+async function syncVendorAdvanceFromPayments(vendorId: string): Promise<void> {
+  const { data: vendor, error: vendorError } = await supabase
+    .from("vendors")
+    .select("total_cost")
+    .eq("id", vendorId)
+    .single();
+  if (vendorError) throw vendorError;
+
+  const { data: payments, error: payError } = await supabase
+    .from("vendor_payments")
+    .select("amount")
+    .eq("vendor_id", vendorId);
+  if (payError) throw payError;
+
+  const advancePaid = (payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalCost = Number(vendor.total_cost);
+  const status = advancePaid >= totalCost ? "Paid" : advancePaid > 0 ? "Confirmed" : "Pending";
+
+  const { error } = await supabase
+    .from("vendors")
+    .update({ advance_paid: advancePaid, status })
+    .eq("id", vendorId);
+  if (error) throw error;
+}
+
+export async function updateTransaction(
+  weddingId: string,
+  id: string,
+  patch: UpdateExpenseInput,
+): Promise<void> {
+  const { data: existing, error: fetchError } = await supabase
+    .from("transactions")
+    .select("vendor_id")
+    .eq("wedding_id", weddingId)
+    .eq("id", id)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const txPayload: Record<string, unknown> = {};
+  if (patch.amount !== undefined) txPayload.amount = patch.amount;
+  if (patch.categoryId !== undefined) txPayload.category_id = patch.categoryId;
+  if (patch.date !== undefined) txPayload.paid_date = patch.date;
+  if (patch.note !== undefined) txPayload.note = patch.note?.trim() || null;
+  if (patch.vendorName !== undefined && !existing.vendor_id) {
+    txPayload.vendor_name = patch.vendorName.trim() || "Expense";
+  }
+
+  if (Object.keys(txPayload).length > 0) {
+    const { error: txError } = await supabase
+      .from("transactions")
+      .update(txPayload)
+      .eq("wedding_id", weddingId)
+      .eq("id", id);
+    if (txError) throw txError;
+  }
+
+  if (existing.vendor_id) {
+    const paymentPayload: Record<string, unknown> = {};
+    if (patch.amount !== undefined) paymentPayload.amount = patch.amount;
+    if (patch.date !== undefined) paymentPayload.paid_date = patch.date;
+    if (patch.note !== undefined) paymentPayload.note = patch.note?.trim() || null;
+
+    if (Object.keys(paymentPayload).length > 0) {
+      const { error: paymentError } = await supabase
+        .from("vendor_payments")
+        .update(paymentPayload)
+        .eq("id", id);
+      if (paymentError) throw paymentError;
+    }
+
+    await syncVendorAdvanceFromPayments(existing.vendor_id);
+  }
+}
+
+export async function deleteTransaction(weddingId: string, id: string): Promise<void> {
+  const { data: existing, error: fetchError } = await supabase
+    .from("transactions")
+    .select("vendor_id")
+    .eq("wedding_id", weddingId)
+    .eq("id", id)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const { error: txError } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("wedding_id", weddingId)
+    .eq("id", id);
+  if (txError) throw txError;
+
+  if (existing.vendor_id) {
+    const { error: paymentError } = await supabase
+      .from("vendor_payments")
+      .delete()
+      .eq("id", id);
+    if (paymentError) throw paymentError;
+    await syncVendorAdvanceFromPayments(existing.vendor_id);
+  }
+}
+
 export async function recordVendorPayment(
   weddingId: string,
   vendor: Vendor,
@@ -925,11 +1224,13 @@ export function buildTransactions(
   return buildTransactionsFromVendorPayments(vendors, budgetCategories);
 }
 
-export async function loadWeddingBundle(userId: string) {
-  const wedding = await fetchWeddingForUser(userId);
+export async function loadWeddingBundle(userId: string, userEmail: string) {
+  const wedding = await resolveUserWedding(userId, userEmail);
   if (!wedding) {
     return {
       wedding: null,
+      isOwner: false,
+      collaborators: [] as WeddingCollaborator[],
       vendors: [] as Vendor[],
       guestGroups: [] as GuestGroup[],
       guests: [] as Guest[],
@@ -950,6 +1251,7 @@ export async function loadWeddingBundle(userId: string) {
     planningTasks,
     pendingSuggestions,
     dbTransactions,
+    collaborators,
   ] = await Promise.all([
     fetchVendors(wedding.id),
     fetchGuestGroups(wedding.id),
@@ -959,6 +1261,7 @@ export async function loadWeddingBundle(userId: string) {
     fetchPlanningTasks(wedding.id),
     fetchPendingSuggestions(wedding.id),
     fetchTransactions(wedding.id),
+    fetchCollaborators(wedding.id),
   ]);
 
   const transactions = mergeTransactionSources(dbTransactions, vendors, budgetCategoriesRaw);
@@ -966,6 +1269,8 @@ export async function loadWeddingBundle(userId: string) {
 
   return {
     wedding,
+    isOwner: wedding.ownerId === userId,
+    collaborators,
     vendors,
     guestGroups,
     guests,

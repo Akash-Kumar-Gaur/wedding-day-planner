@@ -191,14 +191,17 @@ function RootContent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
+  const isPublicPath =
+    pathname === "/login" || pathname === "/terms" || pathname === "/privacy";
+
   useEffect(() => {
-    if (status === "unauthenticated" && pathname !== "/login") {
+    if (status === "unauthenticated" && !isPublicPath) {
       navigate({ to: "/login" });
     }
     if (status === "authenticated" && pathname === "/login") {
       navigate({ to: "/" });
     }
-  }, [status, pathname, navigate]);
+  }, [status, pathname, navigate, isPublicPath]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -213,7 +216,7 @@ function RootContent() {
   }
 
   if (status === "unauthenticated") {
-    if (pathname !== "/login") return null;
+    if (!isPublicPath) return null;
     return <Outlet />;
   }
 

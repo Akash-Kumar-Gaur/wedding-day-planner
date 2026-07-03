@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as VendorsRouteImport } from './routes/vendors'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ShareRouteImport } from './routes/share'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InviteRouteImport } from './routes/invite'
@@ -26,6 +29,21 @@ const WalletRoute = WalletRouteImport.update({
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareRoute = ShareRouteImport.update({
+  id: '/share',
+  path: '/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanRoute = PlanRouteImport.update({
@@ -66,6 +84,9 @@ export interface FileRoutesByFullPath {
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
+  '/privacy': typeof PrivacyRoute
+  '/share': typeof ShareRoute
+  '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
@@ -76,6 +97,9 @@ export interface FileRoutesByTo {
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
+  '/privacy': typeof PrivacyRoute
+  '/share': typeof ShareRoute
+  '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
@@ -87,6 +111,9 @@ export interface FileRoutesById {
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
+  '/privacy': typeof PrivacyRoute
+  '/share': typeof ShareRoute
+  '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
@@ -99,6 +126,9 @@ export interface FileRouteTypes {
     | '/invite'
     | '/login'
     | '/plan'
+    | '/privacy'
+    | '/share'
+    | '/terms'
     | '/vendors'
     | '/wallet'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +139,9 @@ export interface FileRouteTypes {
     | '/invite'
     | '/login'
     | '/plan'
+    | '/privacy'
+    | '/share'
+    | '/terms'
     | '/vendors'
     | '/wallet'
   id:
@@ -119,6 +152,9 @@ export interface FileRouteTypes {
     | '/invite'
     | '/login'
     | '/plan'
+    | '/privacy'
+    | '/share'
+    | '/terms'
     | '/vendors'
     | '/wallet'
   fileRoutesById: FileRoutesById
@@ -130,6 +166,9 @@ export interface RootRouteChildren {
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   PlanRoute: typeof PlanRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ShareRoute: typeof ShareRoute
+  TermsRoute: typeof TermsRoute
   VendorsRoute: typeof VendorsRoute
   WalletRoute: typeof WalletRoute
 }
@@ -148,6 +187,27 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof VendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share': {
+      id: '/share'
+      path: '/share'
+      fullPath: '/share'
+      preLoaderRoute: typeof ShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plan': {
@@ -202,6 +262,9 @@ const rootRouteChildren: RootRouteChildren = {
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   PlanRoute: PlanRoute,
+  PrivacyRoute: PrivacyRoute,
+  ShareRoute: ShareRoute,
+  TermsRoute: TermsRoute,
   VendorsRoute: VendorsRoute,
   WalletRoute: WalletRoute,
 }

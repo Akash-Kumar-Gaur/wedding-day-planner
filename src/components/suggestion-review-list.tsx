@@ -18,6 +18,8 @@ type SuggestionReviewListProps = {
   onDismiss: (suggestion: PendingSuggestion) => Promise<void>;
   onDateChange?: (id: string, suggestedDate: string) => void;
   busyId?: string | null;
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
 export function SuggestionReviewList({
@@ -26,6 +28,8 @@ export function SuggestionReviewList({
   onDismiss,
   onDateChange,
   busyId,
+  emptyTitle = "All caught up",
+  emptyDescription = "No pending suggestions. Add items manually or suggest more.",
 }: SuggestionReviewListProps) {
   const grouped = useMemo(() => {
     const map = new Map<string, PendingSuggestion[]>();
@@ -40,10 +44,8 @@ export function SuggestionReviewList({
   if (!suggestions.length) {
     return (
       <Card className="rounded-2xl border-dashed p-6 text-center">
-        <p className="font-serif text-lg text-foreground">All caught up</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          No pending suggestions. Add items manually or suggest more.
-        </p>
+        <p className="font-serif text-lg text-foreground">{emptyTitle}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>
       </Card>
     );
   }

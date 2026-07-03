@@ -261,12 +261,37 @@
   animation: wedding-loader-flicker 1.6s ease-in-out infinite;
 }
 
-.day-tabs-scroll {
+.day-tabs-scroll,
+.selectable-scroll {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* Inset for ring-2 + ring-offset-2 on edge items; negative margin preserves alignment */
+  padding: 4px;
+  /* margin: -4px; */
 }
 
-.day-tabs-scroll::-webkit-scrollbar {
+.day-tabs-scroll::-webkit-scrollbar,
+.selectable-scroll::-webkit-scrollbar {
   display: none;
+}
+
+/* Native date pickers — match app inputs on iOS Safari & Android Chrome */
+@layer base {
+  input[type="date"] {
+    font-family: inherit;
+    color: var(--foreground);
+    color-scheme: light;
+    min-height: 2.25rem;
+    line-height: 1.5;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.55;
+  }
 }

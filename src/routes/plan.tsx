@@ -77,6 +77,7 @@ function PlanScreen() {
     saveWeddingBasics,
     setOnboardingMode,
     saveSuggestionReviewBatch,
+    seedCommonlyMissedTasks,
     pendingSuggestions,
     pendingReviewCount,
     acceptSuggestion,
@@ -179,6 +180,7 @@ function PlanScreen() {
     try {
       await saveBasics();
       await setOnboardingMode("manual");
+      await seedCommonlyMissedTasks(null);
       navigate({ to: "/" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not continue.");
@@ -211,6 +213,7 @@ function PlanScreen() {
       if (!weddingId) throw new Error("Wedding not saved");
       setTradition(tradition);
       savePlanAnswers(weddingId, answers);
+      await seedCommonlyMissedTasks(answers);
       await saveSuggestionReviewBatch(answers, { nonce: 0 });
       setNonce(0);
       setPhase("review");

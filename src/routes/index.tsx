@@ -15,10 +15,12 @@ import {
   Shirt,
   Building2,
   Plus,
+  UserPlus,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScreenHeader, StatusBadge } from "@/components/app-shell";
+import { SecondaryPromptCard } from "@/components/get-suggestions-prompt";
 import { SetBudgetSheet } from "@/components/set-budget-sheet";
 import { TimelineCreateSheet } from "@/components/timeline-create-sheet";
 import {
@@ -30,6 +32,8 @@ import {
 import { useWeddingPlan } from "@/lib/wedding-plan-store";
 import { useWeddingData } from "@/lib/wedding-data";
 import { formatShortDate } from "@/lib/lead-time-dates";
+import { computeGuestHeadcounts } from "@/lib/guest-headcount";
+import { formatDisplayTime, parseTimeToMinutes } from "@/lib/time-utils";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
@@ -52,7 +56,7 @@ function sortTimelineEvents<T extends { eventDate: string; time: string }>(event
   return [...events].sort((a, b) => {
     const byDate = a.eventDate.localeCompare(b.eventDate);
     if (byDate !== 0) return byDate;
-    return a.time.localeCompare(b.time);
+    return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
   });
 }
 
@@ -88,6 +92,8 @@ function Index() {
     ? Math.min(100, Math.round((totalSpent / wedding.totalBudget!) * 100))
     : 0;
 
+  const guestHeadcounts = useMemo(() => computeGuestHeadcounts(guests), [guests]);
+
   const upcomingVendors = vendors
     .filter((v) => v.status !== "Paid")
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -99,9 +105,18 @@ function Index() {
   return (
     <div>
       <ScreenHeader eyebrow={wedding.location} title={wedding.coupleNames}>
-        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" /> {wedding.location || "Your wedding"}
-        </p>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" /> {wedding.location || "Your wedding"}
+          </p>
+          <Link
+            to="/share"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-primary hover:bg-muted/50"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Share
+          </Link>
+        </div>
       </ScreenHeader>
 
       <div className="space-y-5 px-5 pt-5">
@@ -124,26 +139,13 @@ function Index() {
           </p>
         </Card>
 
-        {!hasPlan ? (
-          <Card className="rounded-2xl border-dashed p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-serif text-lg text-foreground">Smart checklist</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Get tradition-specific tasks and commonly missed items before they become crises.
-                </p>
-              </div>
-              <Sparkles className="h-5 w-5 shrink-0 text-primary" />
-            </div>
-            <Link to="/plan" className="mt-4 inline-block">
-              <Button size="sm">Personalize plan</Button>
-            </Link>
-          </Card>
-        ) : null}
-
         <div className="grid grid-cols-3 gap-3">
           <StatTile icon={Store} label="Vendors" value={vendors.length.toString()} />
-          <StatTile icon={Users} label="Guests" value={guests.length.toString()} />
+          <StatTile
+            icon={Users}
+            label="Guests"
+            value={guestHeadcounts.maxHeadcount.toString()}
+          />
           <StatTile
             icon={AlertCircle}
             label="Due soon"
@@ -208,7 +210,7 @@ function Index() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{e.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {formatShortDate(e.eventDate)} · {e.time} · {e.venue}
+                      {formatShortDate(e.eventDate)} · {formatDisplayTime(e.time)} · {e.venue}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -247,6 +249,19 @@ function Index() {
             </Card>
           )}
         </section>
+
+        {!hasPlan ? (
+          <SecondaryPromptCard
+            title="Smart checklist"
+            description="Get tradition-specific tasks and commonly missed items before they become crises."
+            icon={Sparkles}
+            action={
+              <Link to="/plan">
+                <Button size="sm">Personalize plan</Button>
+              </Link>
+            }
+          />
+        ) : null}
 
         <button
           type="button"

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Search, Leaf, Drumstick, BedDouble, Bus, MailPlus, Plus } from "lucide-react";
+import { Search, Leaf, Drumstick, Sprout, BedDouble, Car, MailPlus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { AccompanyingCountStepper } from "@/components/accompanying-count-stepper";
 import { ScreenHeader, StatusBadge } from "@/components/app-shell";
 import { GetSuggestionsSheet } from "@/components/get-suggestions-sheet";
+import { GetSuggestionsLink, SectionEmptyState } from "@/components/get-suggestions-prompt";
 import type { Guest, MealPref, RsvpStatus } from "@/data/wedding-types";
 import { computeGuestHeadcounts } from "@/lib/guest-headcount";
 import { useWeddingData } from "@/lib/wedding-data";
@@ -70,15 +71,16 @@ function GuestsScreen() {
         <div className="mt-3 space-y-2 rounded-xl bg-secondary/60 px-3 py-3 text-center text-sm">
           <p>
             <span className="font-medium text-foreground">{headcounts.invitedRecords} invited</span>
-            <span className="text-muted-foreground"> ({headcounts.maxHeadcount} max headcount)</span>
+            <span className="text-muted-foreground"> · </span>
+            <span className="font-medium text-foreground">{headcounts.maxHeadcount} total guests</span>
           </p>
           <p>
             <span className="font-medium text-[color:var(--success)]">
               {headcounts.confirmedRecords} confirmed
             </span>
-            <span className="text-muted-foreground">
-              {" "}
-              ({headcounts.confirmedHeadcount} attending)
+            <span className="text-muted-foreground"> · </span>
+            <span className="font-medium text-[color:var(--success)]">
+              {headcounts.confirmedHeadcount} attending
             </span>
           </p>
           {headcounts.pendingRecords > 0 ? (
@@ -92,11 +94,11 @@ function GuestsScreen() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search guests"
-            className="h-10 rounded-full border-border bg-secondary/60 pl-9 text-sm"
+            className="h-10 rounded-full border-border bg-secondary/60 pl-9 text-sm mb-4"
           />
         </div>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="selectable-scroll mt-3 flex gap-2">
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>All</Chip>
           <Chip active={filter === "Pending"} onClick={() => setFilter("Pending")}>RSVP pending</Chip>
           <Chip active={filter === "Confirmed"} onClick={() => setFilter("Confirmed")}>Confirmed</Chip>
@@ -125,61 +127,12 @@ function GuestsScreen() {
             </div>
             <Card className="divide-y divide-border rounded-2xl p-0">
               {members.map((g) => (
-                <div
+                <GuestRow
                   key={g.id}
-                  className="flex items-center gap-1 px-2 py-1 transition-colors hover:bg-muted/40"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenGuest(g)}
-                    className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-2 text-left"
-                  >
-                    <div className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-                      {g.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
-                      <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                        {g.meal === "Non-veg" ? (
-                          <Drumstick className="h-3 w-3" />
-                        ) : (
-                          <Leaf className="h-3 w-3" />
-                        )}
-                        <span>{g.meal}</span>
-                        {g.accommodation ? (
-                          <span className="inline-flex items-center gap-0.5">
-                            <BedDouble className="h-3 w-3" /> Room
-                          </span>
-                        ) : null}
-                        {g.transportNeeded ? (
-                          <span className="inline-flex items-center gap-0.5">
-                            <Bus className="h-3 w-3" /> Transport
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {g.accompanyingCount > 0 ? (
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          +{g.accompanyingCount}
-                        </span>
-                      ) : null}
-                      <StatusBadge
-                        status={
-                          g.rsvp === "Confirmed" ? "done" : g.rsvp === "Declined" ? "declined" : "pending"
-                        }
-                      />
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Create invite for ${g.name}`}
-                    onClick={() => navigate({ to: "/invite", search: { guestId: g.id } })}
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
-                  >
-                    <MailPlus className="h-4 w-4" />
-                  </button>
-                </div>
+                  guest={g}
+                  onOpen={() => setOpenGuest(g)}
+                  onInvite={() => navigate({ to: "/invite", search: { guestId: g.id } })}
+                />
               ))}
             </Card>
           </section>
@@ -187,24 +140,28 @@ function GuestsScreen() {
 
         {grouped.length === 0 ? (
           guestsData.length === 0 ? (
-            <Card className="rounded-2xl border-dashed p-6 text-center">
-              <p className="font-serif text-lg text-foreground">No guests yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add guests yourself or get ideas for guest-related planning tasks.
-              </p>
-              <div className="mt-4 flex flex-col gap-2">
-                <Button onClick={() => setCreateOpen(true)}>Add guest</Button>
-                <Button variant="outline" onClick={() => setSuggestionsOpen(true)}>
-                  Not sure what you need? Get suggestions
-                </Button>
-              </div>
-            </Card>
+            <SectionEmptyState
+              title="No guests yet"
+              description="Add guests yourself or browse guest-related planning ideas."
+              primaryAction={<Button onClick={() => setCreateOpen(true)}>Add guest</Button>}
+              onGetSuggestions={() => setSuggestionsOpen(true)}
+              suggestionsLabel="Not sure what you need? Get suggestions"
+            />
           ) : (
             <p className="mt-10 text-center text-sm text-muted-foreground">
               No guests match your search or filter.
             </p>
           )
         ) : null}
+
+        {/* {grouped.length > 0 ? (
+          <div className="text-center">
+            <GetSuggestionsLink
+              onClick={() => setSuggestionsOpen(true)}
+              label="Not sure what you need? Get suggestions"
+            />
+          </div>
+        ) : null} */}
 
         <div className="h-4" />
       </div>
@@ -234,7 +191,7 @@ function GuestsScreen() {
         onClose={() => setSuggestionsOpen(false)}
         title="Guest-related planning ideas"
         categories={["Invitations", "Accommodation", "Transport", "Emergency"]}
-        includeCommonlyMissed
+        includeCommonlyMissed={false}
         perCategory={2}
       />
     </div>
@@ -254,6 +211,95 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     >
       {children}
     </button>
+  );
+}
+
+function MealMeta({ meal }: { meal: MealPref }) {
+  const config =
+    meal === "Non-veg"
+      ? { icon: Drumstick, label: "Non-veg" }
+      : meal === "Jain"
+        ? { icon: Sprout, label: "Jain" }
+        : { icon: Leaf, label: "Veg" };
+  const Icon = config.icon;
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+      <Icon className="h-3 w-3 shrink-0" aria-hidden />
+      <span>{config.label}</span>
+    </span>
+  );
+}
+
+function GuestRow({
+  guest,
+  onOpen,
+  onInvite,
+}: {
+  guest: Guest;
+  onOpen: () => void;
+  onInvite: () => void;
+}) {
+  const initials = guest.name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("");
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-[15px] font-medium leading-tight text-foreground">
+              {guest.name}
+            </p>
+            {guest.accompanyingCount > 0 ? (
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                +{guest.accompanyingCount}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-[10px] text-xs text-muted-foreground">
+            <MealMeta meal={guest.meal} />
+            {guest.accommodation ? (
+              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+                <BedDouble className="h-3 w-3 shrink-0" aria-hidden />
+                <span>Room</span>
+              </span>
+            ) : null}
+            {guest.transportNeeded ? (
+              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+                <Car className="h-3 w-3 shrink-0" aria-hidden />
+                <span>Transport</span>
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </button>
+      <div className="flex shrink-0 flex-col items-end justify-center gap-2">
+        <StatusBadge
+          status={
+            guest.rsvp === "Confirmed" ? "done" : guest.rsvp === "Declined" ? "declined" : "pending"
+          }
+        />
+        <button
+          type="button"
+          aria-label={`Create invite for ${guest.name}`}
+          onClick={onInvite}
+          className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+        >
+          <MailPlus className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 

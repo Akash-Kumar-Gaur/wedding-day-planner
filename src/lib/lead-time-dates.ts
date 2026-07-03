@@ -1,5 +1,7 @@
+import { format } from "date-fns";
 import type { LeadTime } from "@/data/checklist-templates";
 import type { TimelineEvent } from "@/data/wedding-types";
+import { parseTimeToMinutes } from "@/lib/time-utils";
 
 const LEAD_MONTHS: Record<LeadTime, number> = {
   "12mo": 12,
@@ -45,6 +47,11 @@ export function formatLongDate(iso: string): string {
   return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 }
 
+export function formatFullWeekdayDate(iso: string): string {
+  if (!iso) return "";
+  return format(parseDateOnly(iso), "EEEE, d MMMM");
+}
+
 /** Every calendar date from start through end inclusive. */
 export function datesInRange(startDate: string, endDate: string): string[] {
   if (!startDate || !endDate) return [];
@@ -79,14 +86,14 @@ export function groupEventsByDate(events: TimelineEvent[]): Map<string, Timeline
     map.set(e.eventDate, list);
   }
   for (const [date, list] of map) {
-    list.sort((a, b) => a.time.localeCompare(b.time));
+    list.sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
     map.set(date, list);
   }
   return map;
 }
 
 export function dateTabLabel(date: string, index: number): string {
-  return `Day ${index + 1} — ${formatShortDate(date)}`;
+  return `Day ${index + 1} · ${formatShortDate(date)}`;
 }
 
 /** Wedding date range plus any event dates outside that range (sorted). */

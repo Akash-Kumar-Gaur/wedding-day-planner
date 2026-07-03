@@ -1,9 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { EmblemBadge } from "@/components/emblem-badge";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { MobileFrame } from "@/components/mobile-frame";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/lib/auth";
@@ -13,19 +12,24 @@ export const Route = createFileRoute("/login")({
   component: LoginScreen,
 });
 
+function isValidEmail(email: string): boolean {
+  const trimmed = email.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+}
+
 function LoginScreen() {
   const navigate = useNavigate();
-  const { sendOtp, verifyOtp, signInWithGoogle } = useAuth();
+  const { sendOtp, verifyOtp } = useAuth();
 
-  const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  const phoneDigits = phone.replace(/\D/g, "").slice(0, 10);
-  const phoneValid = phoneDigits.length === 10;
+  const emailValid = isValidEmail(email);
+  const emailDisplay = email.trim().toLowerCase();
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -36,10 +40,10 @@ function LoginScreen() {
   }, [resendIn]);
 
   const handleSendOtp = async () => {
-    if (!phoneValid) return;
+    if (!emailValid) return;
     setError(null);
     setSubmitting(true);
-    const { error: otpError } = await sendOtp(phoneDigits);
+    const { error: otpError } = await sendOtp(emailDisplay);
     setSubmitting(false);
     if (otpError) {
       setError(otpError.message);
@@ -53,7 +57,7 @@ function LoginScreen() {
     if (otp.length !== 6) return;
     setError(null);
     setSubmitting(true);
-    const { error: verifyError } = await verifyOtp(phoneDigits, otp);
+    const { error: verifyError } = await verifyOtp(emailDisplay, otp);
     setSubmitting(false);
     if (verifyError) {
       setError(verifyError.message);
@@ -67,11 +71,13 @@ function LoginScreen() {
     await handleSendOtp();
   };
 
+  /* GOOGLE_AUTH_DISABLED: keep handler for when Google sign-in is re-enabled.
   const handleGoogle = async () => {
     setError(null);
     const { error: googleError } = await signInWithGoogle();
     if (googleError) setError(googleError.message);
   };
+  */
 
   return (
     <MobileFrame>
@@ -90,36 +96,30 @@ function LoginScreen() {
             <div
               className={cn(
                 "transition-all duration-200 ease-out",
-                step === "phone"
+                step === "email"
                   ? "translate-x-0 opacity-100"
                   : "pointer-events-none absolute inset-0 -translate-x-3 opacity-0",
               )}
             >
               <h2 className="font-serif text-xl font-medium text-foreground">Welcome back</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Log in with your phone number</p>
+              <p className="mt-1 text-sm text-muted-foreground">Log in with your email</p>
 
               <div className="mt-6 space-y-4">
-                <label className="block text-sm font-medium text-foreground" htmlFor="phone">
-                  Mobile number
+                <label className="block text-sm font-medium text-foreground" htmlFor="email">
+                  Email address
                 </label>
-                <div className="flex gap-2">
-                  <span className="inline-flex h-10 shrink-0 items-center rounded-md border border-input bg-background px-3 text-sm text-muted-foreground">
-                    +91
-                  </span>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    placeholder="98765 43210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    className="flex-1"
-                  />
-                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
                 <button
                   type="button"
-                  disabled={!phoneValid || submitting}
+                  disabled={!emailValid || submitting}
                   onClick={handleSendOtp}
                   className="inline-flex h-10 w-full items-center justify-center rounded-md text-sm font-medium text-white transition-opacity disabled:opacity-50"
                   style={{
@@ -130,6 +130,7 @@ function LoginScreen() {
                   Send OTP
                 </button>
 
+                {/* GOOGLE_AUTH_DISABLED: re-enable once Supabase Google provider + redirect URLs are configured.
                 <div className="relative py-2">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t border-border" />
@@ -142,6 +143,7 @@ function LoginScreen() {
                 <Button variant="outline" size="sm" className="w-full" onClick={handleGoogle}>
                   Continue with Google
                 </Button>
+                */}
               </div>
             </div>
 
@@ -155,7 +157,7 @@ function LoginScreen() {
             >
               <h2 className="font-serif text-xl font-medium text-foreground">Enter code</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                6-digit code sent to +91 {phoneDigits}
+                6-digit code sent to {emailDisplay}
               </p>
 
               <div className="mt-6 space-y-4">
@@ -196,13 +198,13 @@ function LoginScreen() {
                 <button
                   type="button"
                   onClick={() => {
-                    setStep("phone");
+                    setStep("email");
                     setOtp("");
                     setError(null);
                   }}
                   className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Change number
+                  Change email
                 </button>
               </div>
             </div>
@@ -213,7 +215,15 @@ function LoginScreen() {
           </div>
 
           <p className="mt-auto pt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-            By continuing, you agree to ShadiPlan&apos;s Terms of Service and Privacy Policy.
+            By continuing, you agree to ShadiPlan&apos;s{" "}
+            <Link to="/terms" className="text-primary hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
+            .
           </p>
 
           <div className="mt-3 flex shrink-0 justify-center" aria-hidden>

@@ -28,25 +28,11 @@ export function suggestionsToPendingInputs(
         task: item.task,
         category: item.category,
         leadTime: item.leadTime,
-        commonlyMissed: item.commonlyMissed,
+        commonlyMissed: false,
         suggestedDate: suggestedDateFromLeadTime(weddingDate, item.leadTime),
         batchNonce,
       });
     }
-  }
-
-  for (const item of result.commonlyMissed) {
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    items.push({
-      poolItemId: item.id,
-      task: item.task,
-      category: item.category,
-      leadTime: item.leadTime,
-      commonlyMissed: true,
-      suggestedDate: suggestedDateFromLeadTime(weddingDate, item.leadTime),
-      batchNonce,
-    });
   }
 
   return items;

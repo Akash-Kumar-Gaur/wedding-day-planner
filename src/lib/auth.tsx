@@ -16,18 +16,24 @@ type AuthContextValue = {
   status: AuthStatus;
   session: Session | null;
   user: User | null;
-  sendOtp: (phone: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
+  sendOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/* PHONE_AUTH_DISABLED: re-enable for SMS login if Twilio + DLT are configured later.
 function toE164India(phone: string): string {
   const digits = phone.replace(/\D/g, "").slice(-10);
   return `+91${digits}`;
 }
+*/
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -67,13 +73,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const configError = () =>
     new Error("Supabase is not configured. Add credentials to .env (see .env.example).");
 
-  const sendOtp = useCallback(async (phone: string) => {
+  const sendOtp = useCallback(async (email: string) => {
+    if (!isSupabaseConfigured) return { error: configError() };
+    const { error } = await supabase.auth.signInWithOtp({ email: normalizeEmail(email) });
+    return { error: error ? new Error(error.message) : null };
+  }, []);
+
+  const verifyOtp = useCallback(async (email: string, token: string) => {
+    if (!isSupabaseConfigured) return { error: configError() };
+    const { error } = await supabase.auth.verifyOtp({
+      email: normalizeEmail(email),
+      token,
+      type: "email",
+    });
+    return { error: error ? new Error(error.message) : null };
+  }, []);
+
+  /* PHONE_AUTH_DISABLED: SMS OTP via Twilio
+  const sendOtpPhone = useCallback(async (phone: string) => {
     if (!isSupabaseConfigured) return { error: configError() };
     const { error } = await supabase.auth.signInWithOtp({ phone: toE164India(phone) });
     return { error: error ? new Error(error.message) : null };
   }, []);
 
-  const verifyOtp = useCallback(async (phone: string, token: string) => {
+  const verifyOtpPhone = useCallback(async (phone: string, token: string) => {
     if (!isSupabaseConfigured) return { error: configError() };
     const { error } = await supabase.auth.verifyOtp({
       phone: toE164India(phone),
@@ -82,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return { error: error ? new Error(error.message) : null };
   }, []);
+  */
 
   const signInWithGoogle = useCallback(async () => {
     if (!isSupabaseConfigured) return { error: configError() };

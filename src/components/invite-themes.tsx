@@ -1,22 +1,146 @@
-import type { ComponentType } from "react";
-import type { InviteThemeId } from "@/lib/invite-utils";
+import type { ComponentType, CSSProperties } from "react";
+import type { InviteEventDetail, InviteThemeId } from "@/lib/invite-utils";
 import { cn } from "@/lib/utils";
+
+export type { InviteEventDetail };
 
 export interface InviteCardProps {
   coupleNames: string;
-  eventSummary: string;
-  dateRange: string;
+  events: InviteEventDetail[];
   location: string;
 }
 
 const cardBase = "flex h-full w-full flex-col items-center justify-center px-16 text-center";
+const sans = "'Inter', sans-serif";
 
-export function FloralInviteCard({
-  coupleNames,
-  eventSummary,
-  dateRange,
-  location,
-}: InviteCardProps) {
+type EventListDensity = "comfortable" | "cozy" | "compact";
+
+function eventListDensity(count: number): EventListDensity {
+  if (count >= 6) return "compact";
+  if (count >= 5) return "cozy";
+  return "comfortable";
+}
+
+function InviteEventList({
+  events,
+  nameColor,
+  metaColor,
+}: {
+  events: InviteEventDetail[];
+  nameColor: string;
+  metaColor: string;
+}) {
+  const density = eventListDensity(events.length);
+  const gap = density === "comfortable" ? 20 : density === "cozy" ? 14 : 8;
+  const nameSize = density === "comfortable" ? 20 : density === "cozy" ? 17 : 15;
+  const metaSize = density === "comfortable" ? 17 : density === "cozy" ? 14 : 13;
+
+  if (events.length === 0) {
+    return (
+      <p style={{ fontFamily: sans, fontSize: 20, lineHeight: 1.4, color: metaColor, margin: 0 }}>
+        Wedding celebrations
+      </p>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        maxWidth: 480,
+        display: "flex",
+        flexDirection: "column",
+        gap,
+        textAlign: "center",
+      }}
+    >
+      {events.map((event) =>
+        density === "compact" ? (
+          <p
+            key={`${event.name}-${event.dateLabel}`}
+            style={{
+              fontFamily: sans,
+              fontSize: metaSize,
+              lineHeight: 1.35,
+              color: metaColor,
+              margin: 0,
+            }}
+          >
+            <span style={{ fontWeight: 500, color: nameColor }}>{event.name}</span>
+            {" — "}
+            {event.dateLabel}
+          </p>
+        ) : (
+          <div key={`${event.name}-${event.dateLabel}`}>
+            <p
+              style={{
+                fontFamily: sans,
+                fontSize: nameSize,
+                fontWeight: 500,
+                lineHeight: 1.3,
+                color: nameColor,
+                margin: 0,
+              }}
+            >
+              {event.name}
+            </p>
+            <p
+              style={{
+                fontFamily: sans,
+                fontSize: metaSize,
+                lineHeight: 1.35,
+                color: metaColor,
+                margin: "4px 0 0",
+              }}
+            >
+              {event.dateLabel}
+              {event.venue ? ` · ${event.venue}` : ""}
+            </p>
+          </div>
+        ),
+      )}
+      {density === "compact" ? (
+        <p
+          style={{
+            fontFamily: sans,
+            fontSize: 12,
+            fontStyle: "italic",
+            lineHeight: 1.3,
+            color: metaColor,
+            margin: "4px 0 0",
+          }}
+        >
+          Venue details on request
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function titleScale(eventCount: number): string {
+  if (eventCount >= 6) return "text-4xl";
+  if (eventCount >= 5) return "text-[2.75rem]";
+  return "text-5xl";
+}
+
+function headerGap(eventCount: number): string {
+  if (eventCount >= 6) return "mt-5";
+  if (eventCount >= 5) return "mt-6";
+  return "mt-8";
+}
+
+function dividerMargin(eventCount: number): string {
+  if (eventCount >= 6) return "my-5";
+  if (eventCount >= 5) return "my-6";
+  return "my-8";
+}
+
+function locationStyle(base: CSSProperties): CSSProperties {
+  return { ...base, textTransform: "uppercase", letterSpacing: "0.12em" };
+}
+
+export function FloralInviteCard({ coupleNames, events, location }: InviteCardProps) {
+  const divider = dividerMargin(events.length);
   return (
     <div
       className={cardBase}
@@ -25,53 +149,56 @@ export function FloralInviteCard({
         fontFamily: "'Fraunces', Georgia, serif",
       }}
     >
-      <p
-        className="text-sm uppercase tracking-[0.28em] text-[#8B5E3C]"
-        style={{ fontFamily: "'Inter', sans-serif" }}
-      >
+      <p className="text-sm uppercase tracking-[0.28em] text-[#8B5E3C]" style={{ fontFamily: sans }}>
         You&apos;re invited
       </p>
-      <h1 className="mt-8 text-5xl font-medium leading-tight text-[#3D2914]">{coupleNames}</h1>
-      <div className="my-8 h-px w-24 bg-[#C17F59]" />
-      <p className="text-xl leading-relaxed text-[#5C4033]" style={{ fontFamily: "'Inter', sans-serif" }}>
-        {eventSummary}
-      </p>
-      <p className="mt-6 text-lg text-[#6B4C3B]">{dateRange}</p>
-      <p className="mt-3 text-base text-[#8B6F5C]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <h1
+        className={cn(
+          headerGap(events.length),
+          titleScale(events.length),
+          "font-medium leading-tight text-[#3D2914]",
+        )}
+      >
+        {coupleNames}
+      </h1>
+      <div className={cn(divider, "h-px w-24 bg-[#C17F59]")} />
+      <InviteEventList events={events} nameColor="#5C4033" metaColor="#8B6F5C" />
+      <div className={cn(divider, "h-px w-24 bg-[#C17F59]")} />
+      <p
+        className="text-sm text-[#8B6F5C]"
+        style={locationStyle({ fontFamily: sans, margin: 0 })}
+      >
         {location}
       </p>
     </div>
   );
 }
 
-export function MinimalInviteCard({
-  coupleNames,
-  eventSummary,
-  dateRange,
-  location,
-}: InviteCardProps) {
+export function MinimalInviteCard({ coupleNames, events, location }: InviteCardProps) {
+  const titleMt = events.length >= 6 ? "mt-8" : events.length >= 5 ? "mt-10" : "mt-12";
+  const eventsMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-10";
+  const locationMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-12";
+
   return (
-    <div
-      className={cn(cardBase, "bg-[#FBF7F0]")}
-      style={{ fontFamily: "'Fraunces', Georgia, serif" }}
-    >
-      <p
-        className="text-xs uppercase tracking-[0.35em] text-[#9A8B7A]"
-        style={{ fontFamily: "'Inter', sans-serif" }}
-      >
+    <div className={cn(cardBase, "bg-[#FBF7F0]")} style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
+      <p className="text-xs uppercase tracking-[0.35em] text-[#9A8B7A]" style={{ fontFamily: sans }}>
         Wedding invitation
       </p>
-      <h1 className="mt-12 text-4xl font-medium tracking-tight text-[#2C2418]">{coupleNames}</h1>
-      <p
-        className="mt-10 max-w-md text-lg leading-relaxed text-[#5C5348]"
-        style={{ fontFamily: "'Inter', sans-serif" }}
+      <h1
+        className={cn(
+          titleMt,
+          events.length >= 6 ? "text-3xl" : events.length >= 5 ? "text-[2rem]" : "text-4xl",
+          "font-medium tracking-tight text-[#2C2418]",
+        )}
       >
-        {eventSummary}
-      </p>
-      <p className="mt-12 text-base text-[#6B6358]">{dateRange}</p>
+        {coupleNames}
+      </h1>
+      <div className={eventsMt}>
+        <InviteEventList events={events} nameColor="#5C5348" metaColor="#9A8B7A" />
+      </div>
       <p
-        className="mt-2 text-sm text-[#9A8B7A]"
-        style={{ fontFamily: "'Inter', sans-serif" }}
+        className={cn(locationMt, "text-sm text-[#9A8B7A]")}
+        style={locationStyle({ fontFamily: sans, margin: 0 })}
       >
         {location}
       </p>
@@ -79,12 +206,10 @@ export function MinimalInviteCard({
   );
 }
 
-export function RoyalInviteCard({
-  coupleNames,
-  eventSummary,
-  dateRange,
-  location,
-}: InviteCardProps) {
+export function RoyalInviteCard({ coupleNames, events, location }: InviteCardProps) {
+  const divider = dividerMargin(events.length);
+  const innerPy = events.length >= 6 ? "py-10" : events.length >= 5 ? "py-12" : "py-16";
+
   return (
     <div
       className={cn(cardBase, "p-12")}
@@ -93,20 +218,41 @@ export function RoyalInviteCard({
         fontFamily: "'Fraunces', Georgia, serif",
       }}
     >
-      <div className="flex h-full w-full flex-col items-center justify-center border border-[#C9A227]/60 px-12 py-16">
-        <p
-          className="text-xs uppercase tracking-[0.3em] text-[#D4AF37]"
-          style={{ fontFamily: "'Inter', sans-serif" }}
-        >
+      <div
+        className={cn(
+          "flex h-full w-full flex-col items-center justify-center border border-[#C9A227]/60 px-12",
+          innerPy,
+        )}
+      >
+        <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37]" style={{ fontFamily: sans }}>
           Shubh Vivah
         </p>
-        <h1 className="mt-8 text-5xl font-semibold leading-tight text-[#F5E6C8]">{coupleNames}</h1>
-        <div className="my-8 h-px w-32 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent" />
-        <p className="text-xl leading-relaxed text-[#E8D5B5]" style={{ fontFamily: "'Inter', sans-serif" }}>
-          {eventSummary}
-        </p>
-        <p className="mt-8 text-lg text-[#D4AF37]">{dateRange}</p>
-        <p className="mt-3 text-base text-[#B8A088]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <h1
+          className={cn(
+            headerGap(events.length),
+            titleScale(events.length),
+            "font-semibold leading-tight text-[#F5E6C8]",
+          )}
+        >
+          {coupleNames}
+        </h1>
+        <div
+          className={cn(
+            divider,
+            "h-px w-32 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent",
+          )}
+        />
+        <InviteEventList events={events} nameColor="#E8D5B5" metaColor="#B8A088" />
+        <div
+          className={cn(
+            divider,
+            "h-px w-32 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent",
+          )}
+        />
+        <p
+          className="text-sm text-[#B8A088]"
+          style={locationStyle({ fontFamily: sans, margin: 0 })}
+        >
           {location}
         </p>
       </div>
@@ -114,12 +260,11 @@ export function RoyalInviteCard({
   );
 }
 
-export function PastelInviteCard({
-  coupleNames,
-  eventSummary,
-  dateRange,
-  location,
-}: InviteCardProps) {
+export function PastelInviteCard({ coupleNames, events, location }: InviteCardProps) {
+  const innerPy = events.length >= 6 ? "py-10" : events.length >= 5 ? "py-12" : "py-14";
+  const eventsMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-10";
+  const locationMt = events.length >= 6 ? "mt-6" : events.length >= 5 ? "mt-8" : "mt-10";
+
   return (
     <div
       className={cn(cardBase, "p-10")}
@@ -128,22 +273,34 @@ export function PastelInviteCard({
         fontFamily: "'Fraunces', Georgia, serif",
       }}
     >
-      <div className="flex h-full w-full flex-col items-center justify-center rounded-[2rem] bg-white/40 px-12 py-14 backdrop-blur-sm">
+      <div
+        className={cn(
+          "flex h-full w-full flex-col items-center justify-center rounded-[2rem] bg-white/40 px-12 backdrop-blur-sm",
+          innerPy,
+        )}
+      >
         <p
           className="text-sm font-light uppercase tracking-[0.25em] text-[#9B7BB8]"
-          style={{ fontFamily: "'Inter', sans-serif" }}
+          style={{ fontFamily: sans }}
         >
           Save the date
         </p>
-        <h1 className="mt-8 text-4xl font-normal leading-tight text-[#4A3F55]">{coupleNames}</h1>
-        <p
-          className="mt-10 max-w-md text-lg font-light leading-relaxed text-[#6B5B73]"
-          style={{ fontFamily: "'Inter', sans-serif" }}
+        <h1
+          className={cn(
+            headerGap(events.length),
+            events.length >= 6 ? "text-3xl" : events.length >= 5 ? "text-[2rem]" : "text-4xl",
+            "font-normal leading-tight text-[#4A3F55]",
+          )}
         >
-          {eventSummary}
-        </p>
-        <p className="mt-10 text-base text-[#7C6B8A]">{dateRange}</p>
-        <p className="mt-2 text-sm font-light text-[#9B8AA8]" style={{ fontFamily: "'Inter', sans-serif" }}>
+          {coupleNames}
+        </h1>
+        <div className={eventsMt}>
+          <InviteEventList events={events} nameColor="#6B5B73" metaColor="#9B8AA8" />
+        </div>
+        <p
+          className={cn(locationMt, "text-sm font-light text-[#9B8AA8]")}
+          style={locationStyle({ fontFamily: sans, margin: 0 })}
+        >
           {location}
         </p>
       </div>

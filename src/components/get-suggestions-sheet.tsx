@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,9 @@ export function GetSuggestionsSheet({
     return categories.includes(item.category);
   });
 
+  const loadSuggestionsRef = useRef(loadCategorySuggestions);
+  loadSuggestionsRef.current = loadCategorySuggestions;
+
   useEffect(() => {
     if (!open || !wedding?.id) return;
     let cancelled = false;
@@ -49,7 +52,7 @@ export function GetSuggestionsSheet({
       setError(null);
       try {
         const answers = loadPlanAnswers(wedding.id, tradition);
-        await loadCategorySuggestions({
+        await loadSuggestionsRef.current({
           answers,
           categories,
           includeCommonlyMissed,
@@ -67,7 +70,7 @@ export function GetSuggestionsSheet({
     return () => {
       cancelled = true;
     };
-  }, [open, wedding?.id, tradition, categories, includeCommonlyMissed, perCategory, nonce, loadCategorySuggestions]);
+  }, [open, wedding?.id, tradition, categories, includeCommonlyMissed, perCategory, nonce]);
 
   const handleAccept = async (
     suggestion: PendingSuggestion,
@@ -111,6 +114,16 @@ export function GetSuggestionsSheet({
               onAccept={handleAccept}
               onDismiss={handleDismiss}
               onDateChange={(id, date) => updatePendingDate(id, date)}
+              emptyTitle={
+                categories?.length
+                  ? "No more suggestions for this category"
+                  : "No more suggestions right now"
+              }
+              emptyDescription={
+                categories?.length
+                  ? "You've already seen every idea we have here. Add items manually, or try another section."
+                  : "You've already seen every idea we have. Add items manually instead."
+              }
             />
           )}
 

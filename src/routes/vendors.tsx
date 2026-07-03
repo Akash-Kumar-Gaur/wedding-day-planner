@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CateringHeadcountNote } from "@/components/catering-headcount-note";
 import { ScreenHeader, StatusBadge } from "@/components/app-shell";
 import { GetSuggestionsSheet } from "@/components/get-suggestions-sheet";
+import { GetSuggestionsLink, SectionEmptyState } from "@/components/get-suggestions-prompt";
 import type { Vendor, VendorCategory, VendorStatus } from "@/data/wedding-types";
 import { formatINR, formatDate, shortDate } from "@/data/wedding";
 import { useWeddingData } from "@/lib/wedding-data";
@@ -104,7 +105,7 @@ function VendorsScreen() {
   return (
     <div>
       <ScreenHeader eyebrow="ShadiPlan" title="Vendors">
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="selectable-scroll mt-3 flex gap-2">
           <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>All</FilterChip>
           <FilterChip active={filter === "due"} onClick={() => setFilter("due")}>Payment due</FilterChip>
           <FilterChip active={filter === "confirmed"} onClick={() => setFilter("confirmed")}>Confirmed</FilterChip>
@@ -113,18 +114,13 @@ function VendorsScreen() {
 
       <div className="space-y-6 px-5 pt-5">
         {grouped.length === 0 ? (
-          <Card className="rounded-2xl border-dashed p-6 text-center">
-            <p className="font-serif text-lg text-foreground">No vendors yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add vendors yourself or get task ideas from our planning library.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <Button onClick={() => setCreateOpen(true)}>Add vendor</Button>
-              <Button variant="outline" onClick={() => setSuggestionsOpen(true)}>
-                Not sure what you need? Get suggestions
-              </Button>
-            </div>
-          </Card>
+          <SectionEmptyState
+            title="No vendors yet"
+            description="Add vendors yourself or browse planning ideas from our library."
+            primaryAction={<Button onClick={() => setCreateOpen(true)}>Add vendor</Button>}
+            onGetSuggestions={() => setSuggestionsOpen(true)}
+            suggestionsLabel="Not sure what you need? Get suggestions"
+          />
         ) : null}
 
         {grouped.map(([category, list]) => {
@@ -195,6 +191,15 @@ function VendorsScreen() {
             </section>
           );
         })}
+
+        {grouped.length > 0 ? (
+          <div className="text-center">
+            <GetSuggestionsLink
+              onClick={() => setSuggestionsOpen(true)}
+              label="Not sure what you need? Get suggestions"
+            />
+          </div>
+        ) : null}
 
         <div className="h-4" />
       </div>

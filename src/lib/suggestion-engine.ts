@@ -55,14 +55,16 @@ function hashAnswers(answers: PlanAnswers, nonce: number): number {
  */
 export function generateSuggestions(
   answers: PlanAnswers,
-  opts: { perCategory?: number; nonce?: number; categories?: string[]; includeCommonlyMissed?: boolean } = {},
+  opts: { perCategory?: number; nonce?: number; categories?: string[]; includeCommonlyMissed?: boolean; excludePoolItemIds?: string[] } = {},
 ): { byCategory: Record<string, SuggestionItem[]>; commonlyMissed: SuggestionItem[] } {
   const perCategory = opts.perCategory ?? 4;
   const nonce = opts.nonce ?? 0;
   const rng = mulberry32(hashAnswers(answers, nonce));
+  const excluded = new Set(opts.excludePoolItemIds ?? []);
 
   const relevant = SUGGESTION_POOL.filter(
     (item) =>
+      !excluded.has(item.id) &&
       matches(item.tradition, answers.tradition) &&
       matches(item.budgetTier, answers.budgetTier) &&
       matches(item.guestTier, answers.guestTier) &&
@@ -110,3 +112,42 @@ export function toDayTier(days: number): DayTier {
 }
 
 export type GeneratedSuggestions = ReturnType<typeof generateSuggestions>;
+
+const MANUAL_COMMONLY_MISSED_ANSWERS: PlanAnswers = {
+  tradition: "Custom",
+  budgetTier: "mid",
+  guestTier: "medium",
+  dayTier: "3-4",
+};
+
+/** Pool of commonly-missed items: universal (manual) or filtered by questionnaire answers. */
+export function getCommonlyMissedPoolItems(answers: PlanAnswers | null): SuggestionItem[] {
+  if (!answers) {
+    return SUGGESTION_POOL.filter((item) => item.commonlyMissed && item.tradition === "all");
+  }
+  return SUGGESTION_POOL.filter(
+    (item) =>
+      item.commonlyMissed &&
+      matches(item.tradition, answers.tradition) &&
+      matches(item.budgetTier, answers.budgetTier) &&
+      matches(item.guestTier, answers.guestTier) &&
+      matches(item.dayTier, answers.dayTier),
+  );
+}
+
+/** Shuffled extras for "Suggest more", excluding tasks already on the list. */
+export function pickMoreCommonlyMissed(
+  answers: PlanAnswers | null,
+  excludeTaskTexts: string[],
+  nonce: number,
+  count = 3,
+): SuggestionItem[] {
+  const exclude = new Set(excludeTaskTexts);
+  const pool = getCommonlyMissedPoolItems(answers).filter((item) => !exclude.has(item.task));
+  const rng = mulberry32(
+    answers
+      ? hashAnswers(answers, nonce)
+      : hashAnswers(MANUAL_COMMONLY_MISSED_ANSWERS, nonce + 9999),
+  );
+  return seededShuffle(pool, rng).slice(0, count);
+}

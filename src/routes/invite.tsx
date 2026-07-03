@@ -17,12 +17,9 @@ import {
   rasterizeInviteCard,
   shareInviteImage,
 } from "@/lib/invite-export";
-import {
-  buildDateRange,
-  buildEventSummary,
-  type InviteThemeId,
-} from "@/lib/invite-utils";
-import { distinctEventDates, formatShortDate } from "@/lib/lead-time-dates";
+import { buildInviteEventDetails, type InviteThemeId } from "@/lib/invite-utils";
+import { distinctEventDates, dateTabLabel } from "@/lib/lead-time-dates";
+import { formatDisplayTime } from "@/lib/time-utils";
 import { useWeddingData } from "@/lib/wedding-data";
 import { cn } from "@/lib/utils";
 
@@ -103,18 +100,16 @@ function InviteScreen() {
     if (!wedding) {
       return {
         coupleNames: "Couple",
-        eventSummary: "Wedding celebrations",
-        dateRange: "",
+        events: [],
         location: "",
       };
     }
     return {
       coupleNames: wedding.coupleNames,
-      eventSummary: buildEventSummary(selectedEvents, timelineEvents.length),
-      dateRange: buildDateRange(wedding.date, selectedEvents),
+      events: buildInviteEventDetails(selectedEvents),
       location: wedding.location,
     };
-  }, [wedding, selectedEvents, timelineEvents.length]);
+  }, [wedding, selectedEvents]);
 
   const ThemeComponent = INVITE_THEMES[theme].Component;
 
@@ -201,7 +196,7 @@ function InviteScreen() {
             {[...eventsByDate.entries()].map(([date, events], index) => (
               <div key={date} className="px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-                  Day {index + 1} · {formatShortDate(date)}
+                  {dateTabLabel(date, index)}
                 </p>
                 <ul className="mt-2 space-y-2">
                   {events.map((event) => (
@@ -215,7 +210,7 @@ function InviteScreen() {
                         <span className="min-w-0 flex-1">
                           <span className="text-sm font-medium text-foreground">{event.name}</span>
                           <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {event.time} · {event.venue}
+                            {formatDisplayTime(event.time)} · {event.venue}
                           </span>
                         </span>
                       </label>
@@ -234,15 +229,17 @@ function InviteScreen() {
 
         <section>
           <h2 className="mb-2 px-1 font-serif text-lg text-foreground">Theme</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="selectable-scroll flex gap-3">
             {INVITE_THEME_IDS.map((id) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setTheme(id)}
                 className={cn(
-                  "shrink-0 rounded-xl p-1 transition-shadow",
-                  theme === id ? "ring-2 ring-primary ring-offset-2" : "ring-1 ring-border",
+                  "shrink-0 rounded-xl p-1 transition-shadow focus-visible:outline-none",
+                  theme === id
+                    ? "ring-2 ring-primary ring-offset-2"
+                    : "ring-1 ring-border",
                 )}
                 aria-label={INVITE_THEMES[id].label}
               >

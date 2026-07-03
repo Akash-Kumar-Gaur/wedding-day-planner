@@ -1,7 +1,7 @@
 import type { Guest } from "@/data/wedding-types";
 
 export function partySize(guest: Guest): number {
-  return 1 + guest.accompanyingCount;
+  return 1 + (guest.accompanyingCount ?? 0);
 }
 
 export type GuestHeadcountSummary = {

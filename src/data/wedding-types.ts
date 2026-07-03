@@ -104,7 +104,7 @@ export interface PlanningTask {
 
 export interface BudgetCategory {
   id: string;
-  name: VendorCategory | "Misc";
+  name: string;
   planned: number;
   actual: number;
 }
@@ -127,8 +127,11 @@ export interface CreateExpenseInput {
   note?: string;
 }
 
+export type UpdateExpenseInput = Partial<CreateExpenseInput>;
+
 export interface Wedding {
   id: string;
+  ownerId: string;
   coupleNames: string;
   location: string;
   /** First day of the wedding (inclusive). */
@@ -137,6 +140,18 @@ export interface Wedding {
   endDate: string;
   totalBudget: number | null;
   onboardingMode?: "manual" | "ai";
+}
+
+export type CollaboratorStatus = "pending" | "accepted";
+
+export interface WeddingCollaborator {
+  id: string;
+  weddingId: string;
+  email: string;
+  userId: string | null;
+  status: CollaboratorStatus;
+  invitedAt: string;
+  acceptedAt: string | null;
 }
 
 export interface CreateWeddingInput {

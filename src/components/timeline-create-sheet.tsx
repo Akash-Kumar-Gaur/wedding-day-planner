@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/time-picker";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CreateTimelineEventInput } from "@/data/wedding-types";
+import { normalizeTimeForStorage, toTimeInputValue } from "@/lib/time-utils";
 
 export function TimelineCreateSheet({
   open,
@@ -26,7 +28,7 @@ export function TimelineCreateSheet({
   useEffect(() => {
     if (open) {
       setEventDate(defaultDate);
-      setTime("");
+      setTime("19:00");
       setName("");
       setVenue("");
       setDressCode("");
@@ -60,12 +62,7 @@ export function TimelineCreateSheet({
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-event-time">Time</Label>
-            <Input
-              id="new-event-time"
-              placeholder="e.g. 7:00 PM"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
+            <TimePicker id="new-event-time" value={time} onChange={setTime} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-event-venue">Venue</Label>
@@ -87,13 +84,13 @@ export function TimelineCreateSheet({
           </div>
           <Button
             className="w-full"
-            disabled={saving || !name.trim() || !eventDate || !time.trim()}
+            disabled={saving || !name.trim() || !eventDate || !time}
             onClick={async () => {
               setSaving(true);
               try {
                 await onCreate({
                   eventDate,
-                  time: time.trim(),
+                  time: normalizeTimeForStorage(time),
                   name: name.trim(),
                   venue: venue.trim() || undefined,
                   dressCode: dressCode.trim() || undefined,
