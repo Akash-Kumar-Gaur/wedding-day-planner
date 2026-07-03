@@ -20,6 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -67,6 +75,25 @@ const VIEW_TABS: { id: ChecklistView; label: string }[] = [
   { id: "missed", label: "Commonly missed" },
 ];
 
+const PLANNING_TASK_CATEGORIES = [
+  "Venue",
+  "Catering",
+  "Photography",
+  "Decor",
+  "Attire",
+  "Transport",
+  "Music",
+  "Legal",
+  "Beauty",
+  "Gifts",
+  "Invitations",
+  "Jewelry",
+  "Emergency",
+  "Accommodation",
+  "Entertainment",
+  "Other",
+] as const;
+
 function loadSavedView(): ChecklistView {
   if (typeof window === "undefined") return "timeline";
   const saved = localStorage.getItem(VIEW_STORAGE_KEY);
@@ -106,6 +133,7 @@ function ChecklistScreen() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [createMissedOpen, setCreateMissedOpen] = useState(false);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [missedSuggestNonce, setMissedSuggestNonce] = useState(0);
   const [suggestingMore, setSuggestingMore] = useState(false);
 
@@ -254,6 +282,17 @@ function ChecklistScreen() {
         <div className="h-4" />
       </div>
 
+      {view === "tasks" ? (
+        <button
+          type="button"
+          aria-label="Add task"
+          onClick={() => setCreateTaskOpen(true)}
+          className="fixed bottom-24 right-[max(1rem,calc(50%-215px+1rem))] z-40 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      ) : null}
+
       <PlanningTaskSheet
         task={openTask}
         onClose={() => setOpenTask(null)}
@@ -299,6 +338,23 @@ function ChecklistScreen() {
             venue: input.venue,
           });
           setCreateMissedOpen(false);
+        }}
+      />
+
+      <PlanningTaskCreateSheet
+        open={createTaskOpen}
+        onClose={() => setCreateTaskOpen(false)}
+        onCreate={async (input) => {
+          await createPlanningTask({
+            task: input.task,
+            leadTime: "1mo",
+            category: input.category,
+            commonlyMissed: false,
+            done: false,
+            suggestedDate: input.suggestedDate ?? "",
+            reason: input.notes,
+          });
+          setCreateTaskOpen(false);
         }}
       />
 
@@ -602,6 +658,7 @@ function CategoryTaskList({
           date={item.suggestedDate}
           time={item.eventTime}
           venue={item.venue}
+          reason={item.reason}
           done={item.done}
           onToggle={(done) => onToggleDone(item.id, done)}
           onEdit={() => onEditTask(item)}
@@ -633,6 +690,7 @@ function CategoryTaskList({
                   date={item.suggestedDate}
                   time={item.eventTime}
                   venue={item.venue}
+                  reason={item.reason}
                   done={item.done}
                   onToggle={(done) => onToggleDone(item.id, done)}
                   onEdit={() => onEditTask(item)}
@@ -861,6 +919,124 @@ function TaskRow({
         </button>
       ) : null}
     </li>
+  );
+}
+
+function PlanningTaskCreateSheet({
+  open,
+  onClose,
+  onCreate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (input: {
+    task: string;
+    category: string;
+    suggestedDate?: string;
+    notes?: string;
+  }) => Promise<void>;
+}) {
+  const [task, setTask] = useState("");
+  const [category, setCategory] = useState<string>("Venue");
+  const [suggestedDate, setSuggestedDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTask("");
+      setCategory("Venue");
+      setSuggestedDate("");
+      setNotes("");
+    }
+  }, [open]);
+
+  const valid = task.trim().length > 0;
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <SheetContent side="bottom">
+        <SheetHeader className="text-left">
+          <SheetTitle className="font-serif text-2xl">Add task</SheetTitle>
+          <p className="text-sm text-muted-foreground">
+            Add a planning task to your checklist — grouped by category.
+          </p>
+        </SheetHeader>
+
+        <div className="mt-5 space-y-4 pb-2">
+          <div className="space-y-2">
+            <Label htmlFor="plan-task-name">Task name</Label>
+            <Input
+              id="plan-task-name"
+              placeholder="e.g. Confirm florist delivery time"
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plan-task-category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger id="plan-task-category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLANNING_TASK_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plan-task-date" className="inline-flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" /> Date (optional)
+            </Label>
+            <Input
+              id="plan-task-date"
+              type="date"
+              value={suggestedDate}
+              onChange={(e) => setSuggestedDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plan-task-notes">Notes (optional)</Label>
+            <Textarea
+              id="plan-task-notes"
+              placeholder="Any extra context"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <Button
+            className="w-full"
+            disabled={!valid || saving}
+            onClick={async () => {
+              if (!valid || saving) return;
+              setSaving(true);
+              try {
+                await onCreate({
+                  task: task.trim(),
+                  category,
+                  suggestedDate: suggestedDate || undefined,
+                  notes: notes.trim() || undefined,
+                });
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? "Adding…" : "Add task"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
