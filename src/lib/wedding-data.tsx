@@ -30,6 +30,7 @@ import {
   type WeddingLoadState,
 } from "@/lib/wedding-load-state";
 import { createWeddingInvalidators } from "@/lib/wedding-invalidation";
+import { weddingQueryKeys } from "@/lib/wedding-query-keys";
 import { useWeddingQueries } from "@/lib/use-wedding-queries";
 import {
   createWedding,
@@ -50,7 +51,6 @@ import {
   inviteCollaborator,
   recordVendorPayment,
   removePendingSuggestion,
-  fetchUsedSuggestionPoolItemIds,
   syncPendingSuggestionsBatch,
   updatePendingSuggestion,
   updatePlanningTask,
@@ -378,7 +378,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       const weddingId = bundle.wedding?.id;
       const weddingDate = bundle.wedding?.date;
       if (!weddingId || !weddingDate) throw new Error("Wedding date required");
-      const usedPoolIds = await fetchUsedSuggestionPoolItemIds(weddingId);
+      const usedPoolIds = bundle.pendingSuggestions.map((p) => p.poolItemId);
       const result = generateSuggestions(answers, {
         categories,
         includeCommonlyMissed: false,
@@ -387,15 +387,18 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
         excludePoolItemIds: usedPoolIds,
       });
       const items = suggestionsToPendingInputs(result, weddingDate, nonce);
-      await syncPendingSuggestionsBatch(weddingId, items, { categories });
-      await inv.pendingSuggestions();
+      const fresh = await syncPendingSuggestionsBatch(weddingId, items, {
+        categories,
+        usedPoolItemIds: usedPoolIds,
+      });
+      queryClient.setQueryData(weddingQueryKeys.pendingSuggestions(weddingId), fresh);
     },
     saveSuggestionReviewBatch: async (answers, opts = {}) => {
       const weddingId = bundle.wedding?.id;
       const weddingDate = bundle.wedding?.date;
       if (!weddingId || !weddingDate) throw new Error("Wedding date required");
       const nonce = opts.nonce ?? 0;
-      const usedPoolIds = await fetchUsedSuggestionPoolItemIds(weddingId);
+      const usedPoolIds = bundle.pendingSuggestions.map((p) => p.poolItemId);
       const result = generateSuggestions(answers, {
         nonce,
         perCategory: opts.perCategory ?? 4,
@@ -403,8 +406,10 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
         excludePoolItemIds: usedPoolIds,
       });
       const items = suggestionsToPendingInputs(result, weddingDate, nonce);
-      await syncPendingSuggestionsBatch(weddingId, items);
-      await inv.pendingSuggestions();
+      const fresh = await syncPendingSuggestionsBatch(weddingId, items, {
+        usedPoolItemIds: usedPoolIds,
+      });
+      queryClient.setQueryData(weddingQueryKeys.pendingSuggestions(weddingId), fresh);
     },
     acceptSuggestion: async (id, patch) => {
       const weddingId = bundle.wedding?.id;

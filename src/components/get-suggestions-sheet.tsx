@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,11 @@ export function GetSuggestionsSheet({
   const [nonce, setNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Stable string dep — inline `categories={[...]}` from parents is a new array every render.
+  const categoriesKey = categories?.length ? [...categories].sort().join("|") : "";
+  const categoriesRef = useRef(categories);
+  categoriesRef.current = categories;
+
   const visible = pendingSuggestions.filter((item) => {
     if (item.status !== "pending") return false;
     if (!categories?.length) return true;
@@ -43,9 +48,17 @@ export function GetSuggestionsSheet({
 
   const loadSuggestionsRef = useRef(loadCategorySuggestions);
   loadSuggestionsRef.current = loadCategorySuggestions;
+  const loadedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!open || !wedding?.id) return;
+    if (!open || !wedding?.id) {
+      if (!open) loadedKeyRef.current = null;
+      return;
+    }
+
+    const loadKey = `${wedding.id}|${nonce}|${categoriesKey}|${perCategory}|${includeCommonlyMissed}|${tradition}`;
+    if (loadedKeyRef.current === loadKey) return;
+
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -54,11 +67,12 @@ export function GetSuggestionsSheet({
         const answers = loadPlanAnswers(wedding.id, tradition);
         await loadSuggestionsRef.current({
           answers,
-          categories,
+          categories: categoriesRef.current,
           includeCommonlyMissed,
           perCategory,
           nonce,
         });
+        if (!cancelled) loadedKeyRef.current = loadKey;
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Could not load suggestions.");
@@ -70,7 +84,9 @@ export function GetSuggestionsSheet({
     return () => {
       cancelled = true;
     };
-  }, [open, wedding?.id, tradition, categories, includeCommonlyMissed, perCategory, nonce]);
+  }, [open, wedding?.id, tradition, categoriesKey, includeCommonlyMissed, perCategory, nonce]);
+
+  const showLoading = loading && visible.length === 0;
 
   const handleAccept = async (
     suggestion: PendingSuggestion,
@@ -105,7 +121,7 @@ export function GetSuggestionsSheet({
 
         <div className="mt-5 space-y-4 pb-6">
           {error ? <p className="text-sm text-[color:var(--destructive)]">{error}</p> : null}
-          {loading ? (
+          {showLoading ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Finding ideas…</p>
           ) : (
             <SuggestionReviewList

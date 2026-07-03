@@ -37,6 +37,16 @@ import { formatINR, formatDate, shortDate } from "@/data/wedding";
 import { useWeddingData } from "@/lib/wedding-data";
 import { cn } from "@/lib/utils";
 
+const VENDOR_SUGGESTION_CATEGORIES: string[] = [
+  "Venue",
+  "Catering",
+  "Photography",
+  "Decor",
+  "Music",
+  "Transport",
+  "Attire",
+];
+
 export const Route = createFileRoute("/vendors")({
   head: () => ({
     meta: [
@@ -220,7 +230,7 @@ function VendorsScreen() {
         open={suggestionsOpen}
         onClose={() => setSuggestionsOpen(false)}
         title="Vendor planning ideas"
-        categories={["Venue", "Catering", "Photography", "Decor", "Music", "Transport", "Attire"]}
+        categories={VENDOR_SUGGESTION_CATEGORIES}
         includeCommonlyMissed={false}
       />
     </div>

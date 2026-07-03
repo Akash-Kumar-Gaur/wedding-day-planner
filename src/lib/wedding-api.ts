@@ -876,15 +876,19 @@ export async function syncPendingSuggestionsBatch(
     suggestedDate: string;
     batchNonce: number;
   }>,
-  opts?: { categories?: string[] },
-): Promise<void> {
-  const { data: existing, error: existingError } = await supabase
-    .from("pending_suggestions")
-    .select("pool_item_id")
-    .eq("wedding_id", weddingId);
-
-  if (existingError) throw existingError;
-  const usedPoolIds = new Set((existing ?? []).map((r) => r.pool_item_id));
+  opts?: { categories?: string[]; usedPoolItemIds?: string[] },
+): Promise<PendingSuggestion[]> {
+  let usedPoolIds: Set<string>;
+  if (opts?.usedPoolItemIds) {
+    usedPoolIds = new Set(opts.usedPoolItemIds);
+  } else {
+    const { data, error: existingError } = await supabase
+      .from("pending_suggestions")
+      .select("pool_item_id")
+      .eq("wedding_id", weddingId);
+    if (existingError) throw existingError;
+    usedPoolIds = new Set((data ?? []).map((r) => r.pool_item_id));
+  }
 
   let deleteQuery = supabase
     .from("pending_suggestions")
@@ -900,24 +904,27 @@ export async function syncPendingSuggestionsBatch(
   if (deleteError) throw deleteError;
 
   const toInsert = items.filter((item) => !usedPoolIds.has(item.poolItemId));
-  if (!toInsert.length) return;
 
-  const { error: insertError } = await supabase.from("pending_suggestions").upsert(
-    toInsert.map((item) => ({
-      wedding_id: weddingId,
-      pool_item_id: item.poolItemId,
-      task: item.task,
-      category: item.category,
-      lead_time: item.leadTime,
-      commonly_missed: item.commonlyMissed,
-      suggested_date: item.suggestedDate || null,
-      status: "pending",
-      batch_nonce: item.batchNonce,
-    })),
-    { onConflict: "wedding_id,pool_item_id", ignoreDuplicates: true },
-  );
+  if (toInsert.length > 0) {
+    const { error: insertError } = await supabase.from("pending_suggestions").upsert(
+      toInsert.map((item) => ({
+        wedding_id: weddingId,
+        pool_item_id: item.poolItemId,
+        task: item.task,
+        category: item.category,
+        lead_time: item.leadTime,
+        commonly_missed: item.commonlyMissed,
+        suggested_date: item.suggestedDate || null,
+        status: "pending",
+        batch_nonce: item.batchNonce,
+      })),
+      { onConflict: "wedding_id,pool_item_id", ignoreDuplicates: true },
+    );
 
-  if (insertError) throw insertError;
+    if (insertError) throw insertError;
+  }
+
+  return fetchPendingSuggestions(weddingId);
 }
 
 export async function updatePendingSuggestion(

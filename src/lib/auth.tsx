@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -36,6 +37,7 @@ function toE164India(phone: string): string {
 */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -117,9 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    if (!isSupabaseConfigured) return;
-    await supabase.auth.signOut();
-  }, []);
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    }
+    localStorage.clear();
+    queryClient.clear();
+    window.location.href = "/login";
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({

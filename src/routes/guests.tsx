@@ -25,6 +25,8 @@ import { computeGuestHeadcounts } from "@/lib/guest-headcount";
 import { useWeddingData } from "@/lib/wedding-data";
 import { cn } from "@/lib/utils";
 
+const GUEST_SUGGESTION_CATEGORIES: string[] = ["Invitations", "Accommodation", "Transport", "Emergency"];
+
 export const Route = createFileRoute("/guests")({
   head: () => ({
     meta: [
@@ -190,7 +192,7 @@ function GuestsScreen() {
         open={suggestionsOpen}
         onClose={() => setSuggestionsOpen(false)}
         title="Guest-related planning ideas"
-        categories={["Invitations", "Accommodation", "Transport", "Emergency"]}
+        categories={GUEST_SUGGESTION_CATEGORIES}
         includeCommonlyMissed={false}
         perCategory={2}
       />
