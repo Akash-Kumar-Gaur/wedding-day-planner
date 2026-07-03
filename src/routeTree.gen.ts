@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as VendorsRouteImport } from './routes/vendors'
+import { Route as PlanRouteImport } from './routes/plan'
 import { Route as GuestsRouteImport } from './routes/guests'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +24,11 @@ const WalletRoute = WalletRouteImport.update({
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuestsRoute = GuestsRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/plan': typeof PlanRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/plan': typeof PlanRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
@@ -60,21 +68,30 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/plan': typeof PlanRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checklist' | '/guests' | '/vendors' | '/wallet'
+  fullPaths: '/' | '/checklist' | '/guests' | '/plan' | '/vendors' | '/wallet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checklist' | '/guests' | '/vendors' | '/wallet'
-  id: '__root__' | '/' | '/checklist' | '/guests' | '/vendors' | '/wallet'
+  to: '/' | '/checklist' | '/guests' | '/plan' | '/vendors' | '/wallet'
+  id:
+    | '__root__'
+    | '/'
+    | '/checklist'
+    | '/guests'
+    | '/plan'
+    | '/vendors'
+    | '/wallet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChecklistRoute: typeof ChecklistRoute
   GuestsRoute: typeof GuestsRoute
+  PlanRoute: typeof PlanRoute
   VendorsRoute: typeof VendorsRoute
   WalletRoute: typeof WalletRoute
 }
@@ -93,6 +110,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof VendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guests': {
@@ -123,9 +147,20 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChecklistRoute: ChecklistRoute,
   GuestsRoute: GuestsRoute,
+  PlanRoute: PlanRoute,
   VendorsRoute: VendorsRoute,
   WalletRoute: WalletRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

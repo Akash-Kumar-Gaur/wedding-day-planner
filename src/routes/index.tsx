@@ -23,10 +23,11 @@ import {
   vendors,
   guests,
   budgetCategories,
-  timelineEvents,
   formatINR,
   daysUntil,
 } from "@/data/wedding";
+import { useWeddingPlan } from "@/lib/wedding-plan-store";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -44,6 +45,7 @@ const CATEGORY_ICON: Record<string, typeof Camera> = {
 };
 
 function Index() {
+  const { timelineEvents, hasPlan } = useWeddingPlan();
   const days = daysUntilWedding();
   const paymentsDue = vendors.filter(
     (v) => v.status !== "Paid" && v.totalCost > v.advancePaid,
@@ -81,6 +83,23 @@ function Index() {
             Saturday, 14 November 2026 · The Leela Palace, Udaipur
           </p>
         </Card>
+
+        {!hasPlan ? (
+          <Card className="rounded-2xl border-dashed p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-serif text-lg text-foreground">Smart checklist</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Get tradition-specific tasks and commonly missed items before they become crises.
+                </p>
+              </div>
+              <Sparkles className="h-5 w-5 shrink-0 text-primary" />
+            </div>
+            <Link to="/plan" className="mt-4 inline-block">
+              <Button size="sm">Personalize plan</Button>
+            </Link>
+          </Card>
+        ) : null}
 
         <div className="grid grid-cols-3 gap-3">
           <StatTile icon={Store} label="Vendors" value={vendors.length.toString()} />

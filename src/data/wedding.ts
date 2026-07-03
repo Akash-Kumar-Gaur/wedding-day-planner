@@ -59,6 +59,25 @@ export interface TimelineEvent {
   done: boolean;
 }
 
+export interface CommonlyMissedTask {
+  id: string;
+  task: string;
+  leadTime: string;
+  category?: string;
+  reason?: string;
+  done: boolean;
+}
+
+export interface PlanningTask {
+  id: string;
+  task: string;
+  leadTime: string;
+  category: string;
+  done: boolean;
+  commonlyMissed: boolean;
+  reason?: string;
+}
+
 export interface BudgetCategory {
   id: string;
   name: VendorCategory | "Misc";
