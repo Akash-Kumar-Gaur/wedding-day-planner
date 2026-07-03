@@ -515,6 +515,7 @@ export async function updateGuest(
   patch: UpdateGuestInput,
 ): Promise<void> {
   const payload: Record<string, unknown> = {};
+  if (patch.groupId !== undefined) payload.group_id = patch.groupId;
   if (patch.rsvp !== undefined) payload.rsvp = patch.rsvp;
   if (patch.meal !== undefined) payload.meal = patch.meal;
   if (patch.accommodation !== undefined) payload.accommodation = patch.accommodation;
@@ -526,6 +527,15 @@ export async function updateGuest(
   const { error } = await supabase
     .from("guests")
     .update(payload)
+    .eq("wedding_id", weddingId)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteGuest(weddingId: string, id: string): Promise<void> {
+  const { error } = await supabase
+    .from("guests")
+    .delete()
     .eq("wedding_id", weddingId)
     .eq("id", id);
   if (error) throw error;

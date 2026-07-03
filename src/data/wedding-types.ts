@@ -192,6 +192,7 @@ export interface CreateGuestInput {
 }
 
 export interface UpdateGuestInput {
+  groupId?: string;
   rsvp?: RsvpStatus;
   meal?: MealPref;
   accommodation?: boolean;

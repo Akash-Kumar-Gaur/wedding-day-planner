@@ -58,6 +58,7 @@ import {
   updateWedding,
   updateWeddingOnboardingMode,
   updateGuest,
+  deleteGuest,
   redistributeBudgetPlanned,
 } from "@/lib/wedding-api";
 
@@ -131,6 +132,7 @@ type WeddingDataContextValue = WeddingBundle & {
   createGuestGroup: (input: CreateGuestGroupInput) => Promise<GuestGroup>;
   createGuest: (input: CreateGuestInput) => Promise<void>;
   updateGuestDetails: (id: string, patch: UpdateGuestInput) => Promise<void>;
+  deleteGuestById: (id: string) => Promise<void>;
   markVendorPaid: (vendorId: string) => Promise<void>;
   inviteCollaborator: (email: string) => Promise<WeddingCollaborator>;
   refresh: () => Promise<void>;
@@ -497,6 +499,12 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       const weddingId = bundle.wedding?.id;
       if (!weddingId) throw new Error("No wedding loaded");
       await updateGuest(weddingId, id, patch);
+      await inv.guests();
+    },
+    deleteGuestById: async (id) => {
+      const weddingId = bundle.wedding?.id;
+      if (!weddingId) throw new Error("No wedding loaded");
+      await deleteGuest(weddingId, id);
       await inv.guests();
     },
     markVendorPaid: async (vendorId) => {

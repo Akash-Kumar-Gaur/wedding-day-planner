@@ -510,10 +510,14 @@ function GuestSheet({
   onClose: () => void;
   onInvite: (guestId: string) => void;
 }) {
-  const { guestGroups, guests, updateGuestDetails } = useWeddingData();
+  const { guestGroups, guests, updateGuestDetails, createGuestGroup, deleteGuestById } =
+    useWeddingData();
   const liveGuest = guest ? guests.find((g) => g.id === guest.id) ?? guest : null;
   const group = liveGuest ? guestGroups.find((g) => g.id === liveGuest.groupId) : null;
 
+  const [groupId, setGroupId] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupSide, setNewGroupSide] = useState<"Bride" | "Groom">("Bride");
   const [rsvp, setRsvp] = useState<RsvpStatus>("Pending");
   const [phone, setPhone] = useState("");
   const [meal, setMeal] = useState<MealPref>("Veg");
@@ -522,10 +526,15 @@ function GuestSheet({
   const [transportNeeded, setTransportNeeded] = useState(false);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!liveGuest) return;
+    setGroupId(liveGuest.groupId || guestGroups[0]?.id || NEW_GROUP_VALUE);
+    setNewGroupName("");
+    setNewGroupSide("Bride");
     setRsvp(liveGuest.rsvp);
     setPhone(liveGuest.phone ?? "");
     setMeal(liveGuest.meal);
@@ -533,15 +542,37 @@ function GuestSheet({
     setAccommodation(liveGuest.accommodation);
     setTransportNeeded(liveGuest.transportNeeded);
     setNotes(liveGuest.notes ?? "");
+    setRemoveConfirmOpen(false);
     setError(null);
-  }, [liveGuest]);
+  }, [liveGuest, guestGroups]);
 
   const handleSave = async () => {
     if (!liveGuest) return;
+
+    let resolvedGroupId = groupId;
+    if (groupId === NEW_GROUP_VALUE) {
+      if (!newGroupName.trim()) {
+        setError("Group name is required for a new group");
+        return;
+      }
+    } else if (!resolvedGroupId) {
+      setError("Select a group");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
+      if (groupId === NEW_GROUP_VALUE) {
+        const created = await createGuestGroup({
+          name: newGroupName.trim(),
+          side: newGroupSide,
+        });
+        resolvedGroupId = created.id;
+      }
+
       await updateGuestDetails(liveGuest.id, {
+        groupId: resolvedGroupId,
         rsvp,
         phone: phone.trim() || undefined,
         meal,
@@ -559,8 +590,31 @@ function GuestSheet({
     }
   };
 
+  const handleRemove = async () => {
+    if (!liveGuest) return;
+    setRemoving(true);
+    setError(null);
+    try {
+      await deleteGuestById(liveGuest.id);
+      toast.success("Guest removed");
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove guest");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   return (
-    <Sheet open={!!guest} onOpenChange={(o) => !o && onClose()}>
+    <Sheet
+      open={!!guest}
+      onOpenChange={(o) => {
+        if (!o) {
+          setRemoveConfirmOpen(false);
+          onClose();
+        }
+      }}
+    >
       <SheetContent side="bottom">
         {liveGuest ? (
           <>
@@ -572,6 +626,52 @@ function GuestSheet({
             </SheetHeader>
 
             <div className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-group">Group</Label>
+                <Select value={groupId} onValueChange={setGroupId}>
+                  <SelectTrigger id="edit-group">
+                    <SelectValue placeholder="Select group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {guestGroups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name} ({g.side} side)
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={NEW_GROUP_VALUE}>Add new group…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {groupId === NEW_GROUP_VALUE ? (
+                <Card className="space-y-3 rounded-2xl p-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-new-group-name">New group name *</Label>
+                    <Input
+                      id="edit-new-group-name"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="e.g. Sharma family"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-new-group-side">Side</Label>
+                    <Select
+                      value={newGroupSide}
+                      onValueChange={(v) => setNewGroupSide(v as "Bride" | "Groom")}
+                    >
+                      <SelectTrigger id="edit-new-group-side">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Bride">Bride</SelectItem>
+                        <SelectItem value="Groom">Groom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </Card>
+              ) : null}
+
               <div className="space-y-2">
                 <Label htmlFor="edit-rsvp">RSVP</Label>
                 <Select value={rsvp} onValueChange={(v) => setRsvp(v as RsvpStatus)}>
@@ -665,6 +765,47 @@ function GuestSheet({
                 <MailPlus className="mr-2 h-4 w-4" />
                 Create invite
               </Button>
+
+              <div className="border-t border-border pt-4">
+                {removeConfirmOpen ? (
+                  <Card className="rounded-2xl border border-[color-mix(in_oklab,var(--destructive)_35%,transparent)] bg-[color-mix(in_oklab,var(--destructive)_8%,transparent)] p-4">
+                    <p className="text-sm text-foreground">
+                      Remove <span className="font-medium">{liveGuest.name}</span>?
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Any invite for this guest will be removed too.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        disabled={removing}
+                        onClick={() => setRemoveConfirmOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="flex-1"
+                        disabled={removing}
+                        onClick={() => void handleRemove()}
+                      >
+                        {removing ? "Removing…" : "Remove"}
+                      </Button>
+                    </div>
+                  </Card>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full py-2 text-center text-sm font-medium text-[color:var(--destructive)]"
+                    onClick={() => setRemoveConfirmOpen(true)}
+                  >
+                    Remove guest
+                  </button>
+                )}
+              </div>
             </div>
           </>
         ) : null}
