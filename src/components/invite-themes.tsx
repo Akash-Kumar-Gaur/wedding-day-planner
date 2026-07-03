@@ -8,10 +8,21 @@ export interface InviteCardProps {
   coupleNames: string;
   events: InviteEventDetail[];
   location: string;
+  inviteImage?: string;
 }
 
 const cardBase = "flex h-full w-full flex-col items-center justify-center px-16 text-center";
 const sans = "'Inter', sans-serif";
+
+const inviteImageStyle: CSSProperties = {
+  width: "60%",
+  maxHeight: "35%",
+  height: "auto",
+  margin: "12px auto 16px",
+  objectFit: "contain",
+  display: "block",
+  flexShrink: 0,
+};
 
 type EventListDensity = "comfortable" | "cozy" | "tight";
 
@@ -143,7 +154,7 @@ function locationStyle(base: CSSProperties): CSSProperties {
   return { ...base, textTransform: "uppercase", letterSpacing: "0.12em" };
 }
 
-export function FloralInviteCard({ coupleNames, events, location }: InviteCardProps) {
+export function FloralInviteCard({ coupleNames, events, location, inviteImage }: InviteCardProps) {
   const divider = dividerMargin(events.length);
   return (
     <div
@@ -156,6 +167,9 @@ export function FloralInviteCard({ coupleNames, events, location }: InviteCardPr
       <p className="text-sm uppercase tracking-[0.28em] text-[#8B5E3C]" style={{ fontFamily: sans }}>
         You&apos;re invited
       </p>
+      {inviteImage ? (
+        <img src={inviteImage} alt="" aria-hidden style={inviteImageStyle} />
+      ) : null}
       <h1
         className={cn(
           headerGap(events.length),

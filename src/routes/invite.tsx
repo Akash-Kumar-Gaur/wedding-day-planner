@@ -17,6 +17,7 @@ import {
   rasterizeInviteCard,
   shareInviteImage,
 } from "@/lib/invite-export";
+import { pickInviteImage } from "@/lib/invite-images";
 import { buildInviteEventDetails, type InviteThemeId } from "@/lib/invite-utils";
 import { distinctEventDates, dateTabLabel } from "@/lib/lead-time-dates";
 import { formatDisplayTime } from "@/lib/time-utils";
@@ -103,20 +104,24 @@ function InviteScreen() {
     [timelineEvents, selectedIds],
   );
 
+  const inviteImageSeed = guestId ?? groupId;
+
   const cardProps = useMemo(() => {
     if (!wedding) {
       return {
         coupleNames: "Couple",
         events: [],
         location: "",
+        inviteImage: pickInviteImage(inviteImageSeed),
       };
     }
     return {
       coupleNames: wedding.coupleNames,
       events: buildInviteEventDetails(selectedEvents),
       location: wedding.location,
+      inviteImage: pickInviteImage(inviteImageSeed),
     };
-  }, [wedding, selectedEvents]);
+  }, [wedding, selectedEvents, inviteImageSeed]);
 
   const ThemeComponent = INVITE_THEMES[theme].Component;
 
