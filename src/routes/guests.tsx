@@ -400,7 +400,7 @@ function GuestCreateSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         <SheetHeader className="text-left">
           <SheetTitle className="font-serif text-2xl">Add guest</SheetTitle>
         </SheetHeader>
@@ -561,7 +561,7 @@ function GuestSheet({
 
   return (
     <Sheet open={!!guest} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         {liveGuest ? (
           <>
             <SheetHeader className="text-left">

@@ -333,7 +333,7 @@ function VendorCreateSheet({ open, onClose }: { open: boolean; onClose: () => vo
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         <SheetHeader className="text-left">
           <SheetTitle className="font-serif text-2xl">Add vendor</SheetTitle>
         </SheetHeader>
@@ -436,7 +436,7 @@ function VendorSheet({ vendor, onClose }: { vendor: Vendor | null; onClose: () =
 
   return (
     <Sheet open={!!vendor} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         {vendor ? (
           <>
             <SheetHeader className="text-left">

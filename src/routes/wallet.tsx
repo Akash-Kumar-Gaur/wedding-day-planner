@@ -339,7 +339,7 @@ function WalletScreen() {
       </button>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+        <SheetContent side="bottom">
           <SheetHeader className="text-left">
             <SheetTitle className="font-serif text-2xl">Log expense</SheetTitle>
             <p className="text-sm text-muted-foreground">
@@ -514,7 +514,7 @@ function CategoryAddSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         <SheetHeader className="text-left">
           <SheetTitle className="font-serif text-2xl">Add category</SheetTitle>
           <p className="text-sm text-muted-foreground">
@@ -626,7 +626,7 @@ function CategoryEditSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         {category ? (
           <>
             <SheetHeader className="text-left">
@@ -770,7 +770,7 @@ function TransactionEditSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         {transaction ? (
           <>
             <SheetHeader className="text-left">

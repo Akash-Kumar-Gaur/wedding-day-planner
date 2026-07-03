@@ -902,7 +902,7 @@ function CommonlyMissedCreateSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         <SheetHeader className="text-left">
           <SheetTitle className="font-serif text-2xl">Add reminder</SheetTitle>
           <p className="text-sm text-muted-foreground">Something easy to forget that isn&apos;t in our list.</p>
@@ -1011,7 +1011,7 @@ function PlanningTaskSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         {task ? (
           <>
             <SheetHeader className="text-left">
@@ -1115,7 +1115,7 @@ function TimelineEventSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
+      <SheetContent side="bottom">
         {event ? (
           <>
             <SheetHeader className="text-left">
