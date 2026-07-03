@@ -157,3 +157,116 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+@keyframes auth-entrance {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-entrance-wordmark {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes splash-loader-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.auth-entrance {
+  animation: auth-entrance 400ms ease-out both;
+}
+
+.auth-entrance-wordmark {
+  animation: auth-entrance-wordmark 400ms ease-out 100ms both;
+}
+
+.splash-loader-dot {
+  animation: splash-loader-dot 0.6s ease-in-out infinite;
+}
+
+.splash-loader-dot--2 {
+  animation-delay: 0.15s;
+}
+
+.splash-loader-dot--3 {
+  animation-delay: 0.3s;
+}
+
+@keyframes wedding-loader-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wedding-loader-pulse-ring {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes wedding-loader-flicker {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 1;
+  }
+  25% {
+    transform: scaleY(1.08) scaleX(0.95);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scaleY(0.94) scaleX(1.05);
+    opacity: 1;
+  }
+  75% {
+    transform: scaleY(1.05) scaleX(0.97);
+    opacity: 0.95;
+  }
+}
+
+.wedding-loader-spin {
+  animation: wedding-loader-spin 8s linear infinite;
+}
+
+.wedding-loader-pulse-ring {
+  animation: wedding-loader-pulse-ring 2.4s ease-in-out infinite;
+}
+
+.wedding-loader-flicker {
+  animation: wedding-loader-flicker 1.6s ease-in-out infinite;
+}
+
+.day-tabs-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.day-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}

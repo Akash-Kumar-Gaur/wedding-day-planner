@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import {
   MapPin,
   CalendarClock,
@@ -13,20 +14,23 @@ import {
   Bus,
   Shirt,
   Building2,
+  Plus,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScreenHeader, StatusBadge } from "@/components/app-shell";
+import { SetBudgetSheet } from "@/components/set-budget-sheet";
+import { TimelineCreateSheet } from "@/components/timeline-create-sheet";
 import {
-  WEDDING,
   daysUntilWedding,
-  vendors,
-  guests,
-  budgetCategories,
   formatINR,
   daysUntil,
+  formatDate,
 } from "@/data/wedding";
 import { useWeddingPlan } from "@/lib/wedding-plan-store";
+import { useWeddingData } from "@/lib/wedding-data";
+import { formatShortDate } from "@/lib/lead-time-dates";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -44,26 +48,59 @@ const CATEGORY_ICON: Record<string, typeof Camera> = {
   Other: Store,
 };
 
+function sortTimelineEvents<T extends { eventDate: string; time: string }>(events: T[]): T[] {
+  return [...events].sort((a, b) => {
+    const byDate = a.eventDate.localeCompare(b.eventDate);
+    if (byDate !== 0) return byDate;
+    return a.time.localeCompare(b.time);
+  });
+}
+
 function Index() {
-  const { timelineEvents, hasPlan } = useWeddingPlan();
-  const days = daysUntilWedding();
+  const { wedding, vendors, guests, budgetCategories, timelineEvents, createTimelineEvent } =
+    useWeddingData();
+  const { hasPlan } = useWeddingPlan();
+  const { signOut } = useAuth();
+  const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
+  const [addEventOpen, setAddEventOpen] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingEvents = useMemo(() => {
+    const sorted = sortTimelineEvents(timelineEvents);
+    const incomplete = sorted.filter((e) => !e.done);
+    const upcoming = incomplete.filter((e) => e.eventDate >= today);
+    if (upcoming.length > 0) return upcoming.slice(0, 2);
+    if (incomplete.length > 0) return incomplete.slice(0, 2);
+    return sorted.slice(0, 2);
+  }, [timelineEvents, today]);
+
+  if (!wedding) {
+    return null;
+  }
+
+  const days = daysUntilWedding(wedding.date);
   const paymentsDue = vendors.filter(
     (v) => v.status !== "Paid" && v.totalCost > v.advancePaid,
   ).length;
   const totalSpent = budgetCategories.reduce((s, c) => s + c.actual, 0);
-  const pct = Math.min(100, Math.round((totalSpent / WEDDING.totalBudget) * 100));
+  const hasBudget = wedding.totalBudget != null && wedding.totalBudget > 0;
+  const pct = hasBudget
+    ? Math.min(100, Math.round((totalSpent / wedding.totalBudget!) * 100))
+    : 0;
 
   const upcomingVendors = vendors
     .filter((v) => v.status !== "Paid")
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 2);
-  const upcomingEvents = timelineEvents.filter((e) => !e.done).slice(0, 2);
+
+  const showAddEventPrompt = timelineEvents.length === 0;
+  const hasNextUpItems = upcomingVendors.length > 0 || upcomingEvents.length > 0;
 
   return (
     <div>
-      <ScreenHeader eyebrow={WEDDING.location} title={WEDDING.coupleNames}>
+      <ScreenHeader eyebrow={wedding.location} title={wedding.coupleNames}>
         <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" /> ShadiPlan · 4 days, 3 venues
+          <MapPin className="h-3.5 w-3.5" /> {wedding.location || "Your wedding"}
         </p>
       </ScreenHeader>
 
@@ -80,7 +117,10 @@ function Index() {
             </div>
           </div>
           <p className="mt-4 text-xs opacity-80">
-            Saturday, 14 November 2026 · The Leela Palace, Udaipur
+            {wedding.endDate && wedding.endDate !== wedding.date
+              ? `${formatDate(wedding.date)} – ${formatDate(wedding.endDate)}`
+              : formatDate(wedding.date)}{" "}
+            · {wedding.location}
           </p>
         </Card>
 
@@ -115,73 +155,120 @@ function Index() {
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
             <h2 className="font-serif text-lg text-foreground">Next up</h2>
-            <Link to="/checklist" className="text-xs font-medium text-primary">
-              See all
-            </Link>
+            {!showAddEventPrompt ? (
+              <Link to="/checklist" className="text-xs font-medium text-primary">
+                See all
+              </Link>
+            ) : null}
           </div>
-          <Card className="divide-y divide-border rounded-2xl p-0">
-            {upcomingVendors.map((v) => {
-              const Icon = CATEGORY_ICON[v.category] ?? Store;
-              const due = daysUntil(v.dueDate);
-              return (
+          {showAddEventPrompt ? (
+            <Card className="rounded-2xl border-dashed p-5">
+              <p className="font-serif text-lg text-foreground">Nothing planned yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add your first event to get started.
+              </p>
+              <Button className="mt-4" size="sm" onClick={() => setAddEventOpen(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add event
+              </Button>
+            </Card>
+          ) : hasNextUpItems ? (
+            <Card className="divide-y divide-border rounded-2xl p-0">
+              {upcomingVendors.map((v) => {
+                const Icon = CATEGORY_ICON[v.category] ?? Store;
+                const due = daysUntil(v.dueDate);
+                return (
+                  <Link
+                    key={v.id}
+                    to="/vendors"
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-secondary-foreground">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{v.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Balance {formatINR(v.totalCost - v.advancePaid)} · due in {due}d
+                      </p>
+                    </div>
+                    <StatusBadge status={v.status === "Confirmed" ? "done" : "pending"} />
+                  </Link>
+                );
+              })}
+              {upcomingEvents.map((e) => (
                 <Link
-                  key={v.id}
-                  to="/vendors"
+                  key={e.id}
+                  to="/checklist"
                   className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
                 >
                   <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-secondary-foreground">
-                    <Icon className="h-4 w-4" />
+                    <CalendarClock className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{v.name}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{e.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      Balance {formatINR(v.totalCost - v.advancePaid)} · due in {due}d
+                      {formatShortDate(e.eventDate)} · {e.time} · {e.venue}
                     </p>
                   </div>
-                  <StatusBadge status={v.status === "Confirmed" ? "done" : "pending"} />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-              );
-            })}
-            {upcomingEvents.map((e) => (
-              <Link
-                key={e.id}
-                to="/checklist"
-                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
-              >
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-secondary-foreground">
-                  <CalendarClock className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{e.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    Day {e.day} · {e.time} · {e.venue}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-            ))}
-          </Card>
+              ))}
+            </Card>
+          ) : null}
         </section>
 
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
             <h2 className="font-serif text-lg text-foreground">Budget</h2>
-            <Link to="/wallet" className="text-xs font-medium text-primary">
-              Details
-            </Link>
+            {hasBudget ? (
+              <Link to="/wallet" className="text-xs font-medium text-primary">
+                Details
+              </Link>
+            ) : null}
           </div>
-          <Card className="rounded-2xl p-5">
-            <div className="flex items-baseline justify-between">
-              <p className="font-serif text-2xl text-foreground">{formatINR(totalSpent)}</p>
-              <p className="text-xs text-muted-foreground">of {formatINR(WEDDING.totalBudget)}</p>
-            </div>
-            <Progress value={pct} className="mt-3 h-2 bg-secondary" />
-            <p className="mt-2 text-xs text-muted-foreground">{pct}% of total budget committed</p>
-          </Card>
+          {hasBudget ? (
+            <Card className="rounded-2xl p-5">
+              <div className="flex items-baseline justify-between">
+                <p className="font-serif text-2xl text-foreground">{formatINR(totalSpent)}</p>
+                <p className="text-xs text-muted-foreground">of {formatINR(wedding.totalBudget!)}</p>
+              </div>
+              <Progress value={pct} className="mt-3 h-2 bg-secondary" />
+              <p className="mt-2 text-xs text-muted-foreground">{pct}% of total budget committed</p>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border-dashed p-5">
+              <p className="text-sm text-muted-foreground">
+                Set your total budget to start tracking.
+              </p>
+              <Button className="mt-4" size="sm" variant="outline" onClick={() => setBudgetSheetOpen(true)}>
+                Set your budget
+              </Button>
+            </Card>
+          )}
         </section>
+
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="mx-auto block pb-6 text-xs text-muted-foreground hover:text-foreground"
+        >
+          Sign out
+        </button>
 
         <div className="h-4" />
       </div>
+
+      <SetBudgetSheet open={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} />
+      <TimelineCreateSheet
+        open={addEventOpen}
+        defaultDate={wedding.date}
+        onClose={() => setAddEventOpen(false)}
+        onCreate={async (input) => {
+          await createTimelineEvent(input);
+          setAddEventOpen(false);
+        }}
+      />
     </div>
   );
 }

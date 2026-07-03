@@ -1,0 +1,29 @@
+---
+description: Always push Supabase migrations to remote after any DB or migration file change
+alwaysApply: true
+---
+
+# Supabase migrations — always push
+
+Whenever you create, edit, or rename a file under `supabase/migrations/`, or make any
+schema change that requires a migration, **push to the linked remote database before
+finishing the task**:
+
+```bash
+supabase migration list   # confirm local vs remote alignment
+supabase db push          # use --include-all if an older-version migration is pending
+```
+
+Do not leave migrations only in the repo or only applied via MCP without syncing CLI
+history. If a migration was applied through the Supabase MCP (`apply_migration`), rename
+the local file to the **exact timestamp version** MCP used so `supabase migration list`
+shows Local and Remote in sync — then run `supabase db push` to apply anything still
+pending.
+
+Prefer the CLI workflow for new migrations:
+
+1. Add `supabase/migrations/<timestamp>_<name>.sql`
+2. Run `supabase db push`
+3. Verify with `supabase migration list`
+
+Never mark a DB-related task complete without confirming remote is up to date.

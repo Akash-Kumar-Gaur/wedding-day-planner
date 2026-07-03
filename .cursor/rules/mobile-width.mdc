@@ -1,0 +1,26 @@
+---
+description: Mobile width convention — ShadiPlan screens and overlays must respect max-w-[430px]
+alwaysApply: true
+---
+
+# Mobile width convention — ShadiPlan
+
+This is a mobile-first PWA. Every screen and every overlay (Sheet, Dialog,
+Drawer, Popover) MUST follow the same responsive width behavior:
+
+- Below ~430px viewport width (real mobile devices): full-bleed, edge to
+  edge, no card border/shadow/margin.
+- Above ~430px viewport width (desktop browser testing): constrained to a
+  centered ~430px-wide column, with a border/shadow/rounded corners so it
+  reads as an intentional mobile preview, not a broken desktop layout.
+
+This behavior lives in two places and should never be reimplemented ad hoc:
+- `MobileFrame` (src/components/mobile-frame.tsx) for page-level content
+- The shared Sheet/Dialog/Drawer primitives in src/components/ui/ for any
+  overlay, which apply the same max-w-[430px] mx-auto constraint
+
+Before adding any new screen or overlay component, confirm it's built on
+top of one of these two, not a fresh one-off layout. If a new kind of
+overlay or layout primitive is genuinely needed, apply this same width
+rule to it explicitly — do not let it default to unconstrained full-width
+behavior.

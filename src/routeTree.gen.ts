@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as PlanRouteImport } from './routes/plan'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as InviteRouteImport } from './routes/invite'
 import { Route as GuestsRouteImport } from './routes/guests'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +31,16 @@ const VendorsRoute = VendorsRouteImport.update({
 const PlanRoute = PlanRouteImport.update({
   id: '/plan',
   path: '/plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteRoute = InviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuestsRoute = GuestsRouteImport.update({
@@ -51,6 +63,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/invite': typeof InviteRoute
+  '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
@@ -59,6 +73,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/invite': typeof InviteRoute
+  '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
@@ -68,20 +84,40 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/checklist': typeof ChecklistRoute
   '/guests': typeof GuestsRoute
+  '/invite': typeof InviteRoute
+  '/login': typeof LoginRoute
   '/plan': typeof PlanRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checklist' | '/guests' | '/plan' | '/vendors' | '/wallet'
+  fullPaths:
+    | '/'
+    | '/checklist'
+    | '/guests'
+    | '/invite'
+    | '/login'
+    | '/plan'
+    | '/vendors'
+    | '/wallet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checklist' | '/guests' | '/plan' | '/vendors' | '/wallet'
+  to:
+    | '/'
+    | '/checklist'
+    | '/guests'
+    | '/invite'
+    | '/login'
+    | '/plan'
+    | '/vendors'
+    | '/wallet'
   id:
     | '__root__'
     | '/'
     | '/checklist'
     | '/guests'
+    | '/invite'
+    | '/login'
     | '/plan'
     | '/vendors'
     | '/wallet'
@@ -91,6 +127,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChecklistRoute: typeof ChecklistRoute
   GuestsRoute: typeof GuestsRoute
+  InviteRoute: typeof InviteRoute
+  LoginRoute: typeof LoginRoute
   PlanRoute: typeof PlanRoute
   VendorsRoute: typeof VendorsRoute
   WalletRoute: typeof WalletRoute
@@ -117,6 +155,20 @@ declare module '@tanstack/react-router' {
       path: '/plan'
       fullPath: '/plan'
       preLoaderRoute: typeof PlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guests': {
@@ -147,6 +199,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChecklistRoute: ChecklistRoute,
   GuestsRoute: GuestsRoute,
+  InviteRoute: InviteRoute,
+  LoginRoute: LoginRoute,
   PlanRoute: PlanRoute,
   VendorsRoute: VendorsRoute,
   WalletRoute: WalletRoute,

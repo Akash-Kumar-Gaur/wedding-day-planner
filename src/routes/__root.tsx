@@ -4,6 +4,8 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -12,6 +14,10 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/app-shell";
+import { WeddingLoader, WeddingLoaderError } from "../components/wedding-loader";
+import { Toaster } from "../components/ui/sonner";
+import { AuthProvider, useAuth } from "../lib/auth";
+import { WeddingDataProvider, useWeddingData } from "../lib/wedding-data";
 import { WeddingPlanProvider } from "../lib/wedding-plan-store";
 
 function NotFoundComponent() {
@@ -117,16 +123,82 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="min-h-dvh w-full overflow-x-hidden">
         {children}
+        <Toaster position="top-center" />
         <Scripts />
       </body>
     </html>
   );
 }
 
+function AuthenticatedShell() {
+  const { loadState, retry } = useWeddingData();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  if (loadState.status === "loading") {
+    return <WeddingLoader />;
+  }
+
+  if (loadState.status === "error") {
+    return <WeddingLoaderError message={loadState.message} onRetry={retry} />;
+  }
+
+  if (loadState.status === "empty") {
+    if (pathname === "/plan") {
+      return (
+        <WeddingPlanProvider weddingId={null}>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </WeddingPlanProvider>
+      );
+    }
+    return <WeddingLoader message="Setting up your plan..." />;
+  }
+
+  return (
+    <WeddingPlanProvider weddingId={loadState.wedding.id}>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </WeddingPlanProvider>
+  );
+}
+
+function AuthenticatedApp() {
+  return (
+    <WeddingDataProvider>
+      <AuthenticatedShell />
+    </WeddingDataProvider>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RootContent />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+function RootContent() {
+  const { status } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (status === "unauthenticated" && pathname !== "/login") {
+      navigate({ to: "/login" });
+    }
+    if (status === "authenticated" && pathname === "/login") {
+      navigate({ to: "/" });
+    }
+  }, [status, pathname, navigate]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -136,14 +208,18 @@ function RootComponent() {
     }
   }, []);
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <WeddingPlanProvider>
-        <AppShell>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </AppShell>
-      </WeddingPlanProvider>
-    </QueryClientProvider>
-  );
+  if (status === "loading") {
+    return <WeddingLoader message="Starting ShadiPlan..." />;
+  }
+
+  if (status === "unauthenticated") {
+    if (pathname !== "/login") return null;
+    return <Outlet />;
+  }
+
+  if (pathname === "/login") {
+    return null;
+  }
+
+  return <AuthenticatedApp />;
 }

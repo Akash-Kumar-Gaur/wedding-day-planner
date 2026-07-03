@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import {
   Phone,
   Plus,
@@ -16,17 +17,23 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { CateringHeadcountNote } from "@/components/catering-headcount-note";
 import { ScreenHeader, StatusBadge } from "@/components/app-shell";
-import {
-  vendors as vendorsData,
-  type Vendor,
-  type VendorCategory,
-  formatINR,
-  formatDate,
-  shortDate,
-} from "@/data/wedding";
+import { GetSuggestionsSheet } from "@/components/get-suggestions-sheet";
+import type { Vendor, VendorCategory, VendorStatus } from "@/data/wedding-types";
+import { formatINR, formatDate, shortDate } from "@/data/wedding";
+import { useWeddingData } from "@/lib/wedding-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/vendors")({
@@ -47,6 +54,17 @@ export const Route = createFileRoute("/vendors")({
   component: VendorsScreen,
 });
 
+const VENDOR_CATEGORIES: VendorCategory[] = [
+  "Venue",
+  "Catering",
+  "Photography",
+  "Decor",
+  "Music",
+  "Transport",
+  "Attire",
+  "Other",
+];
+
 const CATEGORY_ICON: Record<VendorCategory, typeof Camera> = {
   Venue: Building2,
   Catering: Utensils,
@@ -61,14 +79,17 @@ const CATEGORY_ICON: Record<VendorCategory, typeof Camera> = {
 type Filter = "all" | "due" | "confirmed";
 
 function VendorsScreen() {
+  const { vendors: vendorsData } = useWeddingData();
   const [filter, setFilter] = useState<Filter>("all");
   const [openVendor, setOpenVendor] = useState<Vendor | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const filtered = useMemo(() => {
     if (filter === "due") return vendorsData.filter((v) => v.totalCost > v.advancePaid);
     if (filter === "confirmed") return vendorsData.filter((v) => v.status !== "Pending");
     return vendorsData;
-  }, [filter]);
+  }, [filter, vendorsData]);
 
   const grouped = useMemo(() => {
     const map = new Map<VendorCategory, Vendor[]>();
@@ -91,6 +112,21 @@ function VendorsScreen() {
       </ScreenHeader>
 
       <div className="space-y-6 px-5 pt-5">
+        {grouped.length === 0 ? (
+          <Card className="rounded-2xl border-dashed p-6 text-center">
+            <p className="font-serif text-lg text-foreground">No vendors yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add vendors yourself or get task ideas from our planning library.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <Button onClick={() => setCreateOpen(true)}>Add vendor</Button>
+              <Button variant="outline" onClick={() => setSuggestionsOpen(true)}>
+                Not sure what you need? Get suggestions
+              </Button>
+            </div>
+          </Card>
+        ) : null}
+
         {grouped.map(([category, list]) => {
           const Icon = CATEGORY_ICON[category] ?? Store;
           return (
@@ -114,7 +150,7 @@ function VendorsScreen() {
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-foreground">{v.name}</p>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {v.contactName}
+                            {v.contactName || "No contact"}
                           </p>
                         </div>
                         <StatusBadge
@@ -148,9 +184,9 @@ function VendorsScreen() {
                       </div>
                       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {v.phone}
+                          <Phone className="h-3 w-3" /> {v.phone || "—"}
                         </span>
-                        <span>Due {shortDate(v.dueDate)}</span>
+                        <span>{v.dueDate ? `Due ${shortDate(v.dueDate)}` : "No due date"}</span>
                       </div>
                     </Card>
                   );
@@ -164,13 +200,24 @@ function VendorsScreen() {
       </div>
 
       <button
+        type="button"
         aria-label="Add vendor"
+        onClick={() => setCreateOpen(true)}
         className="fixed bottom-24 right-[max(1rem,calc(50%-215px+1rem))] z-40 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
       >
         <Plus className="h-6 w-6" />
       </button>
 
+      <VendorCreateSheet open={createOpen} onClose={() => setCreateOpen(false)} />
       <VendorSheet vendor={openVendor} onClose={() => setOpenVendor(null)} />
+
+      <GetSuggestionsSheet
+        open={suggestionsOpen}
+        onClose={() => setSuggestionsOpen(false)}
+        title="Vendor planning ideas"
+        categories={["Venue", "Catering", "Photography", "Decor", "Music", "Transport", "Attire"]}
+        includeCommonlyMissed={false}
+      />
     </div>
   );
 }
@@ -181,7 +228,7 @@ function FilterChip({
   onClick,
 }: {
   active: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -199,7 +246,179 @@ function FilterChip({
   );
 }
 
+function VendorCreateSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { createVendor } = useWeddingData();
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<VendorCategory>("Venue");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [totalCost, setTotalCost] = useState("");
+  const [advancePaid, setAdvancePaid] = useState("0");
+  const [dueDate, setDueDate] = useState("");
+  const [status, setStatus] = useState<VendorStatus>("Pending");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setName("");
+    setCategory("Venue");
+    setContactName("");
+    setPhone("");
+    setTotalCost("");
+    setAdvancePaid("0");
+    setDueDate("");
+    setStatus("Pending");
+    setNotes("");
+    setError(null);
+  };
+
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      setError("Vendor name is required");
+      return;
+    }
+    const cost = Number(totalCost);
+    if (!cost || cost <= 0) {
+      setError("Enter a valid total cost");
+      return;
+    }
+    const advance = Number(advancePaid) || 0;
+    if (advance < 0 || advance > cost) {
+      setError("Advance paid must be between 0 and total cost");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await createVendor({
+        name: name.trim(),
+        category,
+        contactName: contactName.trim(),
+        phone: phone.trim(),
+        totalCost: cost,
+        advancePaid: advance,
+        dueDate,
+        status,
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Vendor added");
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add vendor");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl">
+        <SheetHeader className="text-left">
+          <SheetTitle className="font-serif text-2xl">Add vendor</SheetTitle>
+        </SheetHeader>
+
+        <div className="mt-5 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="vendor-name">Name *</Label>
+            <Input id="vendor-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Vendor name" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vendor-category">Category</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as VendorCategory)}>
+              <SelectTrigger id="vendor-category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VENDOR_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vendor-contact">Contact name</Label>
+            <Input id="vendor-contact" value={contactName} onChange={(e) => setContactName(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vendor-phone">Phone</Label>
+            <Input id="vendor-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="vendor-total">Total cost (₹) *</Label>
+              <Input id="vendor-total" type="number" min={0} value={totalCost} onChange={(e) => setTotalCost(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor-advance">Advance paid (₹)</Label>
+              <Input id="vendor-advance" type="number" min={0} value={advancePaid} onChange={(e) => setAdvancePaid(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="vendor-due">Due date</Label>
+              <Input id="vendor-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor-status">Status</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as VendorStatus)}>
+                <SelectTrigger id="vendor-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                  <SelectItem value="Paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vendor-notes">Notes</Label>
+            <Textarea id="vendor-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-20 rounded-2xl" />
+          </div>
+
+          {error ? <p className="text-sm text-[color:var(--destructive)]">{error}</p> : null}
+
+          <Button className="w-full" disabled={saving} onClick={handleSubmit}>
+            {saving ? "Saving…" : "Add vendor"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function VendorSheet({ vendor, onClose }: { vendor: Vendor | null; onClose: () => void }) {
+  const { markVendorPaid } = useWeddingData();
+  const [saving, setSaving] = useState(false);
+  const balance = vendor ? vendor.totalCost - vendor.advancePaid : 0;
+
+  const handleMarkPaid = async () => {
+    if (!vendor || balance <= 0) return;
+    setSaving(true);
+    try {
+      await markVendorPaid(vendor.id);
+      toast.success("Payment recorded");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not record payment");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Sheet open={!!vendor} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl">
@@ -213,12 +432,14 @@ function VendorSheet({ vendor, onClose }: { vendor: Vendor | null; onClose: () =
             </SheetHeader>
 
             <div className="mt-4 space-y-4">
+              {vendor.category === "Catering" ? <CateringHeadcountNote /> : null}
+
               <Card className="rounded-2xl p-4">
                 <div className="flex items-center justify-between text-sm">
                   <div>
                     <p className="text-xs text-muted-foreground">Contact</p>
-                    <p className="mt-0.5 font-medium">{vendor.contactName}</p>
-                    <p className="text-xs text-muted-foreground">{vendor.phone}</p>
+                    <p className="mt-0.5 font-medium">{vendor.contactName || "—"}</p>
+                    <p className="text-xs text-muted-foreground">{vendor.phone || "—"}</p>
                   </div>
                   <StatusBadge
                     status={vendor.status === "Pending" ? "pending" : "done"}
@@ -239,33 +460,42 @@ function VendorSheet({ vendor, onClose }: { vendor: Vendor | null; onClose: () =
                   Payment history
                 </h3>
                 <Card className="divide-y divide-border rounded-2xl p-0">
-                  {vendor.payments.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                      <div>
-                        <p className="font-medium">{formatINR(p.amount)}</p>
-                        {p.note ? (
-                          <p className="text-xs text-muted-foreground">{p.note}</p>
-                        ) : null}
+                  {vendor.payments.length === 0 ? (
+                    <p className="px-4 py-4 text-center text-sm text-muted-foreground">No payments yet</p>
+                  ) : (
+                    vendor.payments.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                        <div>
+                          <p className="font-medium">{formatINR(p.amount)}</p>
+                          {p.note ? (
+                            <p className="text-xs text-muted-foreground">{p.note}</p>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </Card>
               </div>
 
-              <div>
-                <label className="mb-2 flex items-center gap-1.5 px-1 text-xs uppercase tracking-wider text-muted-foreground">
-                  <StickyNote className="h-3 w-3" /> Notes
-                </label>
-                <Textarea
-                  defaultValue={vendor.notes ?? ""}
-                  placeholder="Add a note about this vendor"
-                  className="min-h-24 rounded-2xl bg-background"
-                />
-              </div>
+              {vendor.notes ? (
+                <div>
+                  <label className="mb-2 flex items-center gap-1.5 px-1 text-xs uppercase tracking-wider text-muted-foreground">
+                    <StickyNote className="h-3 w-3" /> Notes
+                  </label>
+                  <Card className="rounded-2xl p-4">
+                    <p className="text-sm text-foreground">{vendor.notes}</p>
+                  </Card>
+                </div>
+              ) : null}
 
-              <Button className="h-11 w-full rounded-full text-sm">
-                <Check className="h-4 w-4" /> Mark as paid
+              <Button
+                className="h-11 w-full rounded-full text-sm"
+                disabled={saving || balance <= 0}
+                onClick={handleMarkPaid}
+              >
+                <Check className="h-4 w-4" />
+                {balance <= 0 ? "Fully paid" : saving ? "Saving…" : `Mark as paid (${formatINR(balance)})`}
               </Button>
             </div>
           </>
