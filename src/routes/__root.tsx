@@ -88,8 +88,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ShadiPlan — Plan your multi-day wedding" },
       { name: "description", content: "A warm, editorial logistics dashboard for planning a multi-day, multi-venue wedding — vendors, guests, checklist and budget in one place." },
       { name: "author", content: "ShadiPlan" },
-      { property: "og:title", content: "ShadiPlan" },
-      { property: "og:description", content: "Your personal logistics dashboard for a multi-day wedding." },
+      { property: "og:title", content: "ShadiPlan — Plan your multi-day wedding" },
+      { property: "og:description", content: "A warm, editorial logistics dashboard for planning a multi-day, multi-venue wedding — vendors, guests, checklist and budget in one place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
@@ -97,6 +97,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "ShadiPlan" },
+      { name: "twitter:title", content: "ShadiPlan — Plan your multi-day wedding" },
+      { name: "twitter:description", content: "A warm, editorial logistics dashboard for planning a multi-day, multi-venue wedding — vendors, guests, checklist and budget in one place." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/38779d5e-ff39-41aa-a525-0f931eca7285" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/38779d5e-ff39-41aa-a525-0f931eca7285" },
     ],
     links: [
       {
