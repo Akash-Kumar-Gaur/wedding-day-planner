@@ -5,8 +5,17 @@ import { HeroBackdrop } from "@/components/hero-backdrop";
 import { MobileFrame } from "@/components/mobile-frame";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type AuthError } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+
+/** Supabase default: 60s between OTP sends (Auth → Rate Limits). */
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
+
+function otpRateLimitWaitSeconds(error: AuthError): number | null {
+  if (error.code !== "over_email_send_rate_limit") return null;
+  const match = error.message.match(/(\d+) seconds?/);
+  return match ? parseInt(match[1], 10) : OTP_RESEND_COOLDOWN_SECONDS;
+}
 
 export const Route = createFileRoute("/login")({
   component: LoginScreen,
@@ -39,18 +48,26 @@ function LoginScreen() {
     return () => window.clearInterval(timer);
   }, [resendIn]);
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (isResend = false) => {
     if (!emailValid) return;
     setError(null);
     setSubmitting(true);
     const { error: otpError } = await sendOtp(emailDisplay);
     setSubmitting(false);
     if (otpError) {
-      setError(otpError.message);
+      const waitSeconds = otpRateLimitWaitSeconds(otpError);
+      if (waitSeconds != null) {
+        setResendIn(waitSeconds);
+        setError(`Please wait ${waitSeconds}s before requesting another code.`);
+        return;
+      }
+      setError(
+        isResend ? "Couldn't send the code. Try again in a moment." : otpError.message,
+      );
       return;
     }
-    setStep("otp");
-    setResendIn(30);
+    if (!isResend) setStep("otp");
+    setResendIn(OTP_RESEND_COOLDOWN_SECONDS);
   };
 
   const handleVerify = async () => {
@@ -68,7 +85,7 @@ function LoginScreen() {
 
   const handleResend = async () => {
     if (resendIn > 0) return;
-    await handleSendOtp();
+    await handleSendOtp(true);
   };
 
   /* GOOGLE_AUTH_DISABLED: keep handler for when Google sign-in is re-enabled.
@@ -120,7 +137,7 @@ function LoginScreen() {
                 <button
                   type="button"
                   disabled={!emailValid || submitting}
-                  onClick={handleSendOtp}
+                  onClick={() => handleSendOtp()}
                   className="inline-flex h-10 w-full items-center justify-center rounded-md text-sm font-medium text-white transition-opacity disabled:opacity-50"
                   style={{
                     background: "#A8482E",

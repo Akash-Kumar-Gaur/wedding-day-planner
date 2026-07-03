@@ -11,14 +11,22 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
+export type AuthError = Error & { code?: string };
+
+function toAuthError(error: { message: string; code?: string }): AuthError {
+  const err = new Error(error.message) as AuthError;
+  err.code = error.code;
+  return err;
+}
+
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type AuthContextValue = {
   status: AuthStatus;
   session: Session | null;
   user: User | null;
-  sendOtp: (email: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  sendOtp: (email: string) => Promise<{ error: AuthError | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 };
@@ -78,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendOtp = useCallback(async (email: string) => {
     if (!isSupabaseConfigured) return { error: configError() };
     const { error } = await supabase.auth.signInWithOtp({ email: normalizeEmail(email) });
-    return { error: error ? new Error(error.message) : null };
+    return { error: error ? toAuthError(error) : null };
   }, []);
 
   const verifyOtp = useCallback(async (email: string, token: string) => {
@@ -88,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       type: "email",
     });
-    return { error: error ? new Error(error.message) : null };
+    return { error: error ? toAuthError(error) : null };
   }, []);
 
   /* PHONE_AUTH_DISABLED: SMS OTP via Twilio
