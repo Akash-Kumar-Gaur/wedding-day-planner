@@ -20,43 +20,6 @@ import { AuthProvider, useAuth } from "../lib/auth";
 import { WeddingDataProvider, useWeddingData } from "../lib/wedding-data";
 import { WeddingPlanProvider } from "../lib/wedding-plan-store";
 
-/** TEMPORARY — remove after confirming env vars on deployed build. */
-function EnvDebugBanner() {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  useEffect(() => {
-    console.log("[ENV DEBUG]", {
-      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-      VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? "present" : "MISSING",
-      allEnvKeys: Object.keys(import.meta.env),
-    });
-  }, []);
-
-  const urlStatus = url ? `present (${url.slice(0, 20)}...)` : "MISSING";
-  const keyStatus = key ? `present (${key.slice(0, 10)}...)` : "MISSING";
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        background: url && key ? "#1a7a3a" : "#a32d2d",
-        color: "white",
-        fontSize: 12,
-        padding: "6px 10px",
-        fontFamily: "monospace",
-        textAlign: "center",
-      }}
-    >
-      DEBUG — VITE_SUPABASE_URL: {urlStatus} | VITE_SUPABASE_ANON_KEY: {keyStatus}
-    </div>
-  );
-}
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -165,7 +128,6 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-dvh w-full overflow-x-hidden">
-        <EnvDebugBanner />
         {children}
         <Toaster position="top-center" />
         <Scripts />
