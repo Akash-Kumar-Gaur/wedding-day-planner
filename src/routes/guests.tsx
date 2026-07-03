@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Search, Leaf, Drumstick, Sprout, BedDouble, Car, MailPlus, Plus } from "lucide-react";
+import { Search, Leaf, Drumstick, Sprout, BedDouble, Car, MailPlus, Plus, Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -351,6 +351,43 @@ function GuestCreateSheet({
     }
   }, [open, guestGroups.length]);
 
+  const pickContact = useCallback(async () => {
+    const isSupported =
+      typeof navigator !== "undefined" && "contacts" in navigator && "ContactsManager" in window;
+
+    if (!isSupported) {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        toast.info(
+          "Contact picker isn't enabled on this iPhone yet. Turn it on: Settings → Safari → Advanced → Feature Flags → Contact Picker API, then reopen Safari.",
+          { duration: 8000 },
+        );
+      } else {
+        toast.info(
+          "Contact picker isn't supported on this browser. You can still enter details manually.",
+        );
+      }
+      return;
+    }
+
+    try {
+      const contacts = await (
+        navigator as Navigator & {
+          contacts: { select: (props: string[], opts: { multiple: boolean }) => Promise<
+            Array<{ name?: string[]; tel?: string[] }>
+          > };
+        }
+      ).contacts.select(["name", "tel"], { multiple: false });
+      if (contacts.length > 0) {
+        const contact = contacts[0];
+        setName(contact.name?.[0] ?? "");
+        setPhone(contact.tel?.[0] ?? "");
+      }
+    } catch (err) {
+      console.error("Contact picker error:", err);
+    }
+  }, []);
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       setError("Guest name is required");
@@ -408,7 +445,25 @@ function GuestCreateSheet({
         <div className="mt-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="guest-name">Name *</Label>
-            <Input id="guest-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Guest name" />
+            <div className="flex gap-2">
+              <Input
+                id="guest-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Guest name"
+                className="min-w-0 flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                aria-label="Pick from contacts"
+                onClick={() => void pickContact()}
+              >
+                <Contact className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
