@@ -25,6 +25,8 @@ import {
   DEMO_VENDORS,
   DEMO_WEDDING_DAYS,
 } from "@/lib/intro-demo-data";
+import type { InviteEventDetail } from "@/lib/invite-utils";
+import type { InviteCardDimensions } from "@/lib/invite-export";
 import { getCardDimensions } from "@/lib/invite-export";
 import { pickInviteImage } from "@/lib/invite-images";
 import { computeGuestHeadcounts } from "@/lib/guest-headcount";
@@ -203,36 +205,14 @@ function IntroPage() {
           description="Pick a theme, select which events someone's invited to, and share straight to WhatsApp or download a PDF."
           visual={
             <DemoPhoneFrame>
-              <div className="flex justify-center bg-background p-4">
-                <div
-                  className="overflow-hidden rounded-lg shadow-md"
-                  style={{
-                    width: cardDimensions.width * INVITE_PREVIEW_SCALE,
-                    height: cardDimensions.height * INVITE_PREVIEW_SCALE,
-                  }}
-                >
-                  <div
-                    style={{
-                      transform: `scale(${INVITE_PREVIEW_SCALE})`,
-                      transformOrigin: "top left",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: cardDimensions.width,
-                        height: cardDimensions.height,
-                      }}
-                      className="overflow-hidden"
-                    >
-                      <FloralInviteCard
-                        coupleNames={DEMO_COUPLE_NAMES}
-                        events={DEMO_INVITE_EVENTS}
-                        location={DEMO_LOCATION}
-                        inviteImage={inviteImage}
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div className="min-w-0 overflow-hidden bg-background p-4">
+                <InviteCardPreview
+                  coupleNames={DEMO_COUPLE_NAMES}
+                  events={DEMO_INVITE_EVENTS}
+                  location={DEMO_LOCATION}
+                  inviteImage={inviteImage}
+                  dimensions={cardDimensions}
+                />
               </div>
             </DemoPhoneFrame>
           }
@@ -276,6 +256,46 @@ function IntroPage() {
   );
 }
 
+function InviteCardPreview({
+  coupleNames,
+  events,
+  location,
+  inviteImage,
+  dimensions,
+}: {
+  coupleNames: string;
+  events: InviteEventDetail[];
+  location: string;
+  inviteImage: string;
+  dimensions: InviteCardDimensions;
+}) {
+  const scaledWidth = dimensions.width * INVITE_PREVIEW_SCALE;
+  const scaledHeight = dimensions.height * INVITE_PREVIEW_SCALE;
+
+  return (
+    <div
+      className="relative mx-auto max-w-full overflow-hidden rounded-lg shadow-md"
+      style={{ width: scaledWidth, height: scaledHeight }}
+    >
+      <div
+        className="absolute left-0 top-0 origin-top-left overflow-hidden"
+        style={{
+          width: dimensions.width,
+          height: dimensions.height,
+          transform: `scale(${INVITE_PREVIEW_SCALE})`,
+        }}
+      >
+        <FloralInviteCard
+          coupleNames={coupleNames}
+          events={events}
+          location={location}
+          inviteImage={inviteImage}
+        />
+      </div>
+    </div>
+  );
+}
+
 function FeatureSection({
   title,
   description,
@@ -290,11 +310,11 @@ function FeatureSection({
   return (
     <section className="border-t border-border/60 py-16 md:py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 md:grid-cols-2 md:gap-16">
-        <div className={cn(reverse && "md:order-2")}>
+        <div className={cn("min-w-0", reverse && "md:order-2")}>
           <h2 className="font-serif text-3xl leading-tight text-foreground md:text-4xl">{title}</h2>
           <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{description}</p>
         </div>
-        <div className={cn(reverse && "md:order-1")}>{visual}</div>
+        <div className={cn("min-w-0", reverse && "md:order-1")}>{visual}</div>
       </div>
     </section>
   );

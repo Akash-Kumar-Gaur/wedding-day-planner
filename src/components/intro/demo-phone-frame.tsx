@@ -12,7 +12,7 @@ export function DemoPhoneFrame({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[430px] overflow-hidden rounded-3xl border border-border bg-background shadow-xl",
+        "mx-auto w-full min-w-0 max-w-[430px] overflow-hidden rounded-3xl border border-border bg-background shadow-xl",
         className,
       )}
     >
