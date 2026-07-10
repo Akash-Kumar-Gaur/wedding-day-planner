@@ -83,8 +83,8 @@ function Index() {
     return null;
   }
 
-  const days = daysUntilWedding(wedding.date);
-  const weddingPast = isWeddingPast(wedding.date);
+  const days = daysUntilWedding(wedding.weddingDate);
+  const weddingPast = isWeddingPast(wedding.weddingDate);
   const paymentsDue = vendors.filter(
     (v) => v.status !== "Paid" && v.totalCost > v.advancePaid,
   ).length;
@@ -144,9 +144,9 @@ function Index() {
             </div>
           </div>
           <p className="mt-4 text-xs opacity-80">
-            {wedding.endDate && wedding.endDate !== wedding.date
-              ? `${formatDate(wedding.date)} – ${formatDate(wedding.endDate)}`
-              : formatDate(wedding.date)}{" "}
+            {wedding.endDate && wedding.endDate !== wedding.startDate
+              ? `${formatDate(wedding.startDate)} – ${formatDate(wedding.endDate)}`
+              : formatDate(wedding.weddingDate)}{" "}
             · {wedding.location}
           </p>
         </Card>
@@ -289,7 +289,7 @@ function Index() {
       <SetBudgetSheet open={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} />
       <TimelineCreateSheet
         open={addEventOpen}
-        defaultDate={wedding.date}
+        defaultDate={wedding.weddingDate}
         onClose={() => setAddEventOpen(false)}
         onCreate={async (input) => {
           await createTimelineEvent(input);

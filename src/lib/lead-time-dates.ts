@@ -96,27 +96,20 @@ export function dateTabLabel(date: string, index: number): string {
   return `Day ${index + 1} · ${formatShortDate(date)}`;
 }
 
-/** Wedding date range plus any event dates outside that range (sorted). */
-export function timelineDayDates(
-  startDate: string,
-  endDate: string,
-  events: TimelineEvent[],
-): string[] {
-  const range = datesInRange(startDate, endDate);
-  const extra = distinctEventDates(events);
-  const set = new Set([...range, ...extra]);
-  return [...set].sort();
+/** Every calendar day from celebration start through end inclusive. */
+export function timelineDayDates(startDate: string, endDate: string): string[] {
+  return datesInRange(startDate, endDate);
 }
 
-/** Extend end_date when events fall after the wedding range. wedding_date is never moved. */
+/** Extend end_date when events fall after the wedding range. start_date and wedding_date are never moved. */
 export function weddingRangePatchesForEvents(
-  wedding: { date: string; endDate: string },
+  wedding: { startDate: string; weddingDate: string; endDate: string },
   events: TimelineEvent[],
 ): { endDate?: string } {
   if (!events.length) return {};
   const dates = distinctEventDates(events);
   const maxEvent = dates[dates.length - 1]!;
-  const end = wedding.endDate || wedding.date;
+  const end = wedding.endDate || wedding.weddingDate;
   if (maxEvent > end) return { endDate: maxEvent };
   return {};
 }

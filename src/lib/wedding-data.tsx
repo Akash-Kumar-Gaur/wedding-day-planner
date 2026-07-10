@@ -219,7 +219,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
     const patches = weddingRangePatchesForEvents(wedding, events);
     if (!patches.endDate) return;
 
-    const key = `${wedding.id}:${wedding.date}:${wedding.endDate}:${events.map((e) => e.id).join()}`;
+    const key = `${wedding.id}:${wedding.startDate}:${wedding.weddingDate}:${wedding.endDate}:${events.map((e) => e.id).join()}`;
     if (rangeSyncKeyRef.current === key) return;
     rangeSyncKeyRef.current = key;
 
@@ -317,7 +317,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       const weddingId = wedding?.id;
       if (!weddingId || !wedding) throw new Error("No wedding loaded");
       await insertTimelineEvent(weddingId, input);
-      const end = wedding.endDate || wedding.date;
+      const end = wedding.endDate || wedding.weddingDate;
       const patches: Partial<CreateWeddingInput> = {};
       if (input.eventDate > end) patches.endDate = input.eventDate;
       if (Object.keys(patches).length) await updateWedding(weddingId, patches);
@@ -344,7 +344,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
     },
     seedCommonlyMissedTasks: async (answers) => {
       const weddingId = bundle.wedding?.id;
-      const weddingDate = bundle.wedding?.date;
+      const weddingDate = bundle.wedding?.weddingDate;
       if (!weddingId || !weddingDate) throw new Error("Wedding date required");
       const alreadySeeded = bundle.planningTasks.some((t) => t.commonlyMissed);
       if (alreadySeeded) return;
@@ -358,7 +358,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
     },
     addMoreCommonlyMissedTasks: async (answers, nonce) => {
       const weddingId = bundle.wedding?.id;
-      const weddingDate = bundle.wedding?.date;
+      const weddingDate = bundle.wedding?.weddingDate;
       if (!weddingId || !weddingDate) throw new Error("Wedding date required");
       const existingTexts = bundle.planningTasks
         .filter((t) => t.commonlyMissed)
@@ -377,7 +377,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       nonce = 0,
     }) => {
       const weddingId = bundle.wedding?.id;
-      const weddingDate = bundle.wedding?.date;
+      const weddingDate = bundle.wedding?.weddingDate;
       if (!weddingId || !weddingDate) throw new Error("Wedding date required");
       const usedPoolIds = bundle.pendingSuggestions.map((p) => p.poolItemId);
       const result = generateSuggestions(answers, {
@@ -396,7 +396,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
     },
     saveSuggestionReviewBatch: async (answers, opts = {}) => {
       const weddingId = bundle.wedding?.id;
-      const weddingDate = bundle.wedding?.date;
+      const weddingDate = bundle.wedding?.weddingDate;
       if (!weddingId || !weddingDate) throw new Error("Wedding date required");
       const nonce = opts.nonce ?? 0;
       const usedPoolIds = bundle.pendingSuggestions.map((p) => p.poolItemId);

@@ -90,7 +90,8 @@ function PlanScreen() {
 
   const [coupleNames, setCoupleNames] = useState("");
   const [location, setLocation] = useState("");
-  const [weddingDate, setWeddingDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [ceremonyDate, setCeremonyDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [budgetSkipped, setBudgetSkipped] = useState(true);
   const [budgetAmount, setBudgetAmount] = useState("");
@@ -108,7 +109,8 @@ function PlanScreen() {
     if (wedding) {
       setCoupleNames(wedding.coupleNames);
       setLocation(wedding.location);
-      setWeddingDate(wedding.date);
+      setStartDate(wedding.startDate);
+      setCeremonyDate(wedding.weddingDate);
       setEndDate(wedding.endDate);
       if (wedding.totalBudget != null) {
         setBudgetSkipped(false);
@@ -139,9 +141,11 @@ function PlanScreen() {
   const basicsValid =
     coupleNames.trim().length > 0 &&
     location.trim().length > 0 &&
-    weddingDate.length > 0 &&
+    startDate.length > 0 &&
+    ceremonyDate.length > 0 &&
     endDate.length > 0 &&
-    endDate >= weddingDate &&
+    startDate <= ceremonyDate &&
+    ceremonyDate <= endDate &&
     (budgetSkipped || Number(budgetAmount) > 0);
 
   const pending = pendingSuggestions.filter((p) => p.status === "pending");
@@ -151,7 +155,8 @@ function PlanScreen() {
     const input = {
       coupleNames: coupleNames.trim(),
       location: location.trim(),
-      weddingDate,
+      startDate,
+      weddingDate: ceremonyDate,
       endDate,
       totalBudget: budgetSkipped ? null : Number(budgetAmount),
     };
@@ -311,10 +316,12 @@ function PlanScreen() {
                   <Input
                     id="start-date"
                     type="date"
-                    value={weddingDate}
+                    value={startDate}
                     onChange={(e) => {
-                      setWeddingDate(e.target.value);
-                      if (endDate && e.target.value > endDate) setEndDate(e.target.value);
+                      const next = e.target.value;
+                      setStartDate(next);
+                      if (endDate && next > endDate) setEndDate(next);
+                      if (ceremonyDate && next > ceremonyDate) setCeremonyDate(next);
                     }}
                   />
                 </div>
@@ -323,13 +330,41 @@ function PlanScreen() {
                   <Input
                     id="end-date"
                     type="date"
-                    min={weddingDate || undefined}
+                    min={startDate || undefined}
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setEndDate(next);
+                      if (ceremonyDate && next < ceremonyDate) setCeremonyDate(next);
+                    }}
                   />
                 </div>
               </div>
-              {weddingDate && endDate && endDate < weddingDate ? (
+              <div className="space-y-2">
+                <Label htmlFor="wedding-day">Wedding day</Label>
+                <Input
+                  id="wedding-day"
+                  type="date"
+                  min={startDate || undefined}
+                  max={endDate || undefined}
+                  value={ceremonyDate}
+                  onChange={(e) => setCeremonyDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The ceremony date used for your countdown on Home.
+                </p>
+              </div>
+              {startDate && ceremonyDate && startDate > ceremonyDate ? (
+                <p className="text-sm text-[color:var(--destructive)]">
+                  Wedding day must be on or after the start date.
+                </p>
+              ) : null}
+              {ceremonyDate && endDate && endDate < ceremonyDate ? (
+                <p className="text-sm text-[color:var(--destructive)]">
+                  Wedding day must be on or before the end date.
+                </p>
+              ) : null}
+              {startDate && endDate && endDate < startDate ? (
                 <p className="text-sm text-[color:var(--destructive)]">
                   End date must be on or after the start date.
                 </p>

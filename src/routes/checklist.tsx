@@ -123,9 +123,9 @@ function ChecklistScreen() {
 
   const [view, setView] = useState<ChecklistView>(loadSavedView);
   const weddingDays = useMemo(() => {
-    if (!wedding?.date) return [];
-    return timelineDayDates(wedding.date, wedding.endDate ?? wedding.date, timelineEvents);
-  }, [wedding?.date, wedding?.endDate, timelineEvents]);
+    if (!wedding?.startDate || !wedding?.endDate) return [];
+    return timelineDayDates(wedding.startDate, wedding.endDate);
+  }, [wedding?.startDate, wedding?.endDate]);
   const [selectedDate, setSelectedDate] = useState("");
   const [taskSearch, setTaskSearch] = useState("");
   const [openTask, setOpenTask] = useState<PlanningTask | null>(null);
@@ -313,7 +313,7 @@ function ChecklistScreen() {
 
       <TimelineCreateSheet
         open={addEventOpen}
-        defaultDate={selectedDate || wedding?.date || ""}
+        defaultDate={selectedDate || wedding?.startDate || ""}
         onClose={() => setAddEventOpen(false)}
         onCreate={async (input) => {
           await createTimelineEvent(input);
@@ -324,7 +324,7 @@ function ChecklistScreen() {
 
       <CommonlyMissedCreateSheet
         open={createMissedOpen}
-        defaultDate={wedding?.date ?? ""}
+        defaultDate={wedding?.startDate ?? ""}
         onClose={() => setCreateMissedOpen(false)}
         onCreate={async (input) => {
           await createPlanningTask({

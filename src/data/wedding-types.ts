@@ -134,9 +134,11 @@ export interface Wedding {
   ownerId: string;
   coupleNames: string;
   location: string;
-  /** First day of the wedding (inclusive). */
-  date: string;
-  /** Last day of the wedding (inclusive). */
+  /** First day of the celebration (inclusive). */
+  startDate: string;
+  /** Ceremony / big day (countdown target). */
+  weddingDate: string;
+  /** Last day of the celebration (inclusive). */
   endDate: string;
   totalBudget: number | null;
   onboardingMode?: "manual" | "ai";
@@ -157,6 +159,7 @@ export interface WeddingCollaborator {
 export interface CreateWeddingInput {
   coupleNames: string;
   location: string;
+  startDate: string;
   weddingDate: string;
   endDate: string;
   totalBudget?: number | null;

@@ -27,6 +27,7 @@ type WeddingRow = {
   owner_id: string;
   couple_names: string;
   location: string | null;
+  start_date: string;
   wedding_date: string;
   end_date: string;
   total_budget: number | null;
@@ -61,7 +62,8 @@ function mapWedding(row: WeddingRow): Wedding {
     ownerId: row.owner_id,
     coupleNames: row.couple_names,
     location: row.location ?? "",
-    date: row.wedding_date,
+    startDate: row.start_date,
+    weddingDate: row.wedding_date,
     endDate: row.end_date ?? row.wedding_date,
     totalBudget: row.total_budget != null ? Number(row.total_budget) : null,
     onboardingMode: row.onboarding_mode === "ai" ? "ai" : "manual",
@@ -252,6 +254,7 @@ export async function createWedding(
       owner_id: ownerId,
       couple_names: input.coupleNames,
       location: input.location,
+      start_date: input.startDate,
       wedding_date: input.weddingDate,
       end_date: input.endDate,
       total_budget: input.totalBudget ?? null,
@@ -272,6 +275,7 @@ export async function updateWedding(
   const payload: Record<string, unknown> = {};
   if (input.coupleNames !== undefined) payload.couple_names = input.coupleNames;
   if (input.location !== undefined) payload.location = input.location;
+  if (input.startDate !== undefined) payload.start_date = input.startDate;
   if (input.weddingDate !== undefined) payload.wedding_date = input.weddingDate;
   if (input.endDate !== undefined) payload.end_date = input.endDate;
   if (input.totalBudget !== undefined) payload.total_budget = input.totalBudget;
