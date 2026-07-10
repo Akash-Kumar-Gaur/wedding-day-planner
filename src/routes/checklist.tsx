@@ -124,8 +124,8 @@ function ChecklistScreen() {
   const [view, setView] = useState<ChecklistView>(loadSavedView);
   const weddingDays = useMemo(() => {
     if (!wedding?.startDate || !wedding?.endDate) return [];
-    return timelineDayDates(wedding.startDate, wedding.endDate);
-  }, [wedding?.startDate, wedding?.endDate]);
+    return timelineDayDates(wedding.startDate, wedding.endDate, timelineEvents);
+  }, [wedding?.startDate, wedding?.endDate, timelineEvents]);
   const [selectedDate, setSelectedDate] = useState("");
   const [taskSearch, setTaskSearch] = useState("");
   const [openTask, setOpenTask] = useState<PlanningTask | null>(null);
