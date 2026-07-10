@@ -108,17 +108,15 @@ export function timelineDayDates(
   return [...set].sort();
 }
 
+/** Extend end_date when events fall after the wedding range. wedding_date is never moved. */
 export function weddingRangePatchesForEvents(
   wedding: { date: string; endDate: string },
   events: TimelineEvent[],
-): { weddingDate?: string; endDate?: string } {
+): { endDate?: string } {
   if (!events.length) return {};
   const dates = distinctEventDates(events);
-  const minEvent = dates[0]!;
   const maxEvent = dates[dates.length - 1]!;
   const end = wedding.endDate || wedding.date;
-  const patches: { weddingDate?: string; endDate?: string } = {};
-  if (minEvent < wedding.date) patches.weddingDate = minEvent;
-  if (maxEvent > end) patches.endDate = maxEvent;
-  return patches;
+  if (maxEvent > end) return { endDate: maxEvent };
+  return {};
 }

@@ -217,7 +217,7 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
     if (!wedding || !events.length) return;
 
     const patches = weddingRangePatchesForEvents(wedding, events);
-    if (!patches.weddingDate && !patches.endDate) return;
+    if (!patches.endDate) return;
 
     const key = `${wedding.id}:${wedding.date}:${wedding.endDate}:${events.map((e) => e.id).join()}`;
     if (rangeSyncKeyRef.current === key) return;
@@ -319,7 +319,6 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       await insertTimelineEvent(weddingId, input);
       const end = wedding.endDate || wedding.date;
       const patches: Partial<CreateWeddingInput> = {};
-      if (input.eventDate < wedding.date) patches.weddingDate = input.eventDate;
       if (input.eventDate > end) patches.endDate = input.eventDate;
       if (Object.keys(patches).length) await updateWedding(weddingId, patches);
       await inv.timelineEvents();

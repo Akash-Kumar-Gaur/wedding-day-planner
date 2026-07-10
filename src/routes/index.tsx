@@ -28,6 +28,7 @@ import {
   formatINR,
   daysUntil,
   formatDate,
+  isWeddingPast,
 } from "@/data/wedding";
 import { useWeddingPlan } from "@/lib/wedding-plan-store";
 import { useWeddingData } from "@/lib/wedding-data";
@@ -83,6 +84,7 @@ function Index() {
   }
 
   const days = daysUntilWedding(wedding.date);
+  const weddingPast = isWeddingPast(wedding.date);
   const paymentsDue = vendors.filter(
     (v) => v.status !== "Paid" && v.totalCost > v.advancePaid,
   ).length;
@@ -123,9 +125,19 @@ function Index() {
         <Card className="overflow-hidden rounded-2xl border-0 bg-primary p-6 text-primary-foreground shadow-none">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] opacity-75">Counting down</p>
-              <p className="mt-3 font-serif text-5xl leading-none">{days}</p>
-              <p className="mt-2 text-sm opacity-90">days until the big day</p>
+              {weddingPast ? (
+                <>
+                  <p className="text-xs uppercase tracking-[0.18em] opacity-75">The big day</p>
+                  <p className="mt-3 font-serif text-5xl leading-none">Married</p>
+                  <p className="mt-2 text-sm opacity-90">Congratulations on your wedding</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs uppercase tracking-[0.18em] opacity-75">Counting down</p>
+                  <p className="mt-3 font-serif text-5xl leading-none">{days}</p>
+                  <p className="mt-2 text-sm opacity-90">days until the big day</p>
+                </>
+              )}
             </div>
             <div className="rounded-full bg-primary-foreground/15 p-2.5">
               <CalendarClock className="h-5 w-5" />
