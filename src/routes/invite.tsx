@@ -47,7 +47,7 @@ const PREVIEW_SCALE = 0.25;
 function InviteScreen() {
   const { guestId, groupId } = Route.useSearch();
   const { wedding, timelineEvents, guests, guestGroups } = useWeddingData();
-  const cardRef = useRef<HTMLDivElement>(null);
+  const cardExportRef = useRef<HTMLDivElement>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [theme, setTheme] = useState<InviteThemeId>("floral");
@@ -151,11 +151,16 @@ function InviteScreen() {
     setSavedInviteId(saved.id);
   };
 
+  const canExport =
+    !!wedding &&
+    cardProps.events.length > 0 &&
+    cardProps.coupleNames.trim().length > 0;
+
   const handleExport = async (mode: "share" | "pdf") => {
-    if (!cardRef.current || !wedding) return;
+    if (!cardExportRef.current || !wedding || !canExport) return;
     setExporting(true);
     try {
-      const dataUrl = await rasterizeInviteCard(cardRef.current, cardDimensions);
+      const dataUrl = await rasterizeInviteCard(cardExportRef.current, cardDimensions);
       await persistInvite();
 
       const safeName = targetLabel.replace(/[^\w\s-]/g, "").trim() || "guest";
@@ -206,6 +211,25 @@ function InviteScreen() {
       </ScreenHeader>
 
       <div className="space-y-5 px-5 pt-5">
+        {/* Full-resolution export target — painted off-screen, never display:none */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed top-0 overflow-hidden"
+          style={{
+            left: -cardDimensions.width - 100,
+            width: cardDimensions.width,
+            height: cardDimensions.height,
+          }}
+        >
+          <div
+            ref={cardExportRef}
+            style={{ width: cardDimensions.width, height: cardDimensions.height }}
+            className="overflow-hidden"
+          >
+            <ThemeComponent {...cardProps} />
+          </div>
+        </div>
+
         <section>
           <h2 className="mb-2 px-1 font-serif text-lg text-foreground">Events</h2>
           <Card className="divide-y divide-border rounded-2xl p-0">
@@ -288,8 +312,10 @@ function InviteScreen() {
                 }}
               >
                 <div
-                  ref={cardRef}
-                  style={{ width: cardDimensions.width, height: cardDimensions.height }}
+                  style={{
+                    width: cardDimensions.width,
+                    height: cardDimensions.height,
+                  }}
                   className="overflow-hidden"
                 >
                   <ThemeComponent {...cardProps} />
@@ -302,7 +328,7 @@ function InviteScreen() {
         <div className="space-y-3 pb-6">
           <Button
             className="w-full"
-            disabled={exporting || selectedIds.size === 0}
+            disabled={exporting || !canExport}
             onClick={() => handleExport("share")}
           >
             <Share2 className="mr-2 h-4 w-4" />
@@ -311,7 +337,7 @@ function InviteScreen() {
           <Button
             className="w-full"
             variant="outline"
-            disabled={exporting || selectedIds.size === 0}
+            disabled={exporting || !canExport}
             onClick={() => handleExport("pdf")}
           >
             <FileDown className="mr-2 h-4 w-4" />

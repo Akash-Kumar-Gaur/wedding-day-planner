@@ -19,19 +19,28 @@ export function getCardDimensions(eventCount: number): InviteCardDimensions {
   };
 }
 
-/** Clone off-screen so preview scale transforms don't shrink the capture. */
-function cloneForExport(element: HTMLElement, dimensions: InviteCardDimensions): HTMLElement {
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.style.position = "fixed";
-  clone.style.left = "-10000px";
-  clone.style.top = "0";
-  clone.style.transform = "none";
-  clone.style.width = `${dimensions.width}px`;
-  clone.style.height = `${dimensions.height}px`;
-  clone.style.margin = "0";
-  clone.style.pointerEvents = "none";
-  document.body.appendChild(clone);
-  return clone;
+/** Ensure embedded images are decoded before rasterization. */
+async function waitForImages(element: HTMLElement): Promise<void> {
+  const images = Array.from(element.querySelectorAll("img"));
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+        }),
+    ),
+  );
+}
+
+async function waitForPaint(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
 }
 
 export async function rasterizeInviteCard(
@@ -39,19 +48,16 @@ export async function rasterizeInviteCard(
   dimensions: InviteCardDimensions,
 ): Promise<string> {
   await document.fonts.ready;
+  await waitForImages(element);
+  await waitForPaint();
 
-  const clone = cloneForExport(element, dimensions);
-  try {
-    return await toPng(clone, {
-      width: dimensions.width,
-      height: dimensions.height,
-      pixelRatio: 2,
-      quality: 1,
-      cacheBust: true,
-    });
-  } finally {
-    document.body.removeChild(clone);
-  }
+  return await toPng(element, {
+    width: dimensions.width,
+    height: dimensions.height,
+    pixelRatio: 2,
+    quality: 1,
+    cacheBust: true,
+  });
 }
 
 function dataUrlToFile(dataUrl: string, filename: string): File {
