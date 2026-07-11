@@ -10,8 +10,9 @@ export interface InviteCardDimensions {
 }
 
 export function getCardDimensions(eventCount: number): InviteCardDimensions {
-  const baseHeight = 1080;
-  const heightPerExtraEvent = 90;
+  // Sized for fixed readable type (couple ~72px, events 28/21) — height grows; fonts do not shrink.
+  const baseHeight = 1160;
+  const heightPerExtraEvent = 110;
   const extraEvents = Math.max(0, eventCount - 3);
   return {
     width: INVITE_WIDTH,

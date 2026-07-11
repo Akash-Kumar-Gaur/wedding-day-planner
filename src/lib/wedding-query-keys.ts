@@ -9,6 +9,11 @@ export const weddingQueryKeys = {
   pendingSuggestions: (weddingId: string) => ["pending-suggestions", weddingId] as const,
   transactions: (weddingId: string) => ["transactions", weddingId] as const,
   collaborators: (weddingId: string) => ["collaborators", weddingId] as const,
+  eventSongs: (timelineEventId: string) => ["event-songs", timelineEventId] as const,
+  outfitPlans: (weddingId: string) => ["outfit-plans", weddingId] as const,
+  gifts: (weddingId: string) => ["gifts", weddingId] as const,
+  photoAlbum: (weddingId: string) => ["photo-album", weddingId] as const,
+  photoUploads: (albumId: string) => ["photo-uploads", albumId] as const,
 };
 
 export const realtimeTableQueryKey = {

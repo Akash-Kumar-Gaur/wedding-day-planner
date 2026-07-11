@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/accordion";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CateringHeadcountNote } from "@/components/catering-headcount-note";
+import { EventSongsSection } from "@/components/event-songs-section";
 import { TimelineCreateSheet } from "@/components/timeline-create-sheet";
 import { TimePicker } from "@/components/time-picker";
 import { ScreenHeader } from "@/components/app-shell";
@@ -1330,6 +1331,8 @@ function TimelineEventSheet({
                   onChange={(e) => setVenue(e.target.value)}
                 />
               </div>
+
+              <EventSongsSection timelineEventId={event.id} />
 
               <Button
                 className="w-full"

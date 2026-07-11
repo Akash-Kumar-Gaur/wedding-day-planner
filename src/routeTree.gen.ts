@@ -13,14 +13,19 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ShareRouteImport } from './routes/share'
+import { Route as RunSheetRouteImport } from './routes/run-sheet'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PlanRouteImport } from './routes/plan'
+import { Route as OutfitsRouteImport } from './routes/outfits'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as IntroRouteImport } from './routes/intro'
 import { Route as GuestsRouteImport } from './routes/guests'
+import { Route as GiftsRouteImport } from './routes/gifts'
 import { Route as ChecklistRouteImport } from './routes/checklist'
+import { Route as AlbumRouteImport } from './routes/album'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlbumTokenRouteImport } from './routes/album.$token'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
@@ -42,6 +47,11 @@ const ShareRoute = ShareRouteImport.update({
   path: '/share',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunSheetRoute = RunSheetRouteImport.update({
+  id: '/run-sheet',
+  path: '/run-sheet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -50,6 +60,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PlanRoute = PlanRouteImport.update({
   id: '/plan',
   path: '/plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutfitsRoute = OutfitsRouteImport.update({
+  id: '/outfits',
+  path: '/outfits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -72,9 +87,19 @@ const GuestsRoute = GuestsRouteImport.update({
   path: '/guests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GiftsRoute = GiftsRouteImport.update({
+  id: '/gifts',
+  path: '/gifts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChecklistRoute = ChecklistRouteImport.update({
   id: '/checklist',
   path: '/checklist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlbumRoute = AlbumRouteImport.update({
+  id: '/album',
+  path: '/album',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -82,104 +107,143 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlbumTokenRoute = AlbumTokenRouteImport.update({
+  id: '/$token',
+  path: '/$token',
+  getParentRoute: () => AlbumRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/album': typeof AlbumRouteWithChildren
   '/checklist': typeof ChecklistRoute
+  '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
   '/intro': typeof IntroRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
+  '/outfits': typeof OutfitsRoute
   '/plan': typeof PlanRoute
   '/privacy': typeof PrivacyRoute
+  '/run-sheet': typeof RunSheetRoute
   '/share': typeof ShareRoute
   '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
+  '/album/$token': typeof AlbumTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/album': typeof AlbumRouteWithChildren
   '/checklist': typeof ChecklistRoute
+  '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
   '/intro': typeof IntroRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
+  '/outfits': typeof OutfitsRoute
   '/plan': typeof PlanRoute
   '/privacy': typeof PrivacyRoute
+  '/run-sheet': typeof RunSheetRoute
   '/share': typeof ShareRoute
   '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
+  '/album/$token': typeof AlbumTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/album': typeof AlbumRouteWithChildren
   '/checklist': typeof ChecklistRoute
+  '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
   '/intro': typeof IntroRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
+  '/outfits': typeof OutfitsRoute
   '/plan': typeof PlanRoute
   '/privacy': typeof PrivacyRoute
+  '/run-sheet': typeof RunSheetRoute
   '/share': typeof ShareRoute
   '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
+  '/album/$token': typeof AlbumTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/album'
     | '/checklist'
+    | '/gifts'
     | '/guests'
     | '/intro'
     | '/invite'
     | '/login'
+    | '/outfits'
     | '/plan'
     | '/privacy'
+    | '/run-sheet'
     | '/share'
     | '/terms'
     | '/vendors'
     | '/wallet'
+    | '/album/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/album'
     | '/checklist'
+    | '/gifts'
     | '/guests'
     | '/intro'
     | '/invite'
     | '/login'
+    | '/outfits'
     | '/plan'
     | '/privacy'
+    | '/run-sheet'
     | '/share'
     | '/terms'
     | '/vendors'
     | '/wallet'
+    | '/album/$token'
   id:
     | '__root__'
     | '/'
+    | '/album'
     | '/checklist'
+    | '/gifts'
     | '/guests'
     | '/intro'
     | '/invite'
     | '/login'
+    | '/outfits'
     | '/plan'
     | '/privacy'
+    | '/run-sheet'
     | '/share'
     | '/terms'
     | '/vendors'
     | '/wallet'
+    | '/album/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlbumRoute: typeof AlbumRouteWithChildren
   ChecklistRoute: typeof ChecklistRoute
+  GiftsRoute: typeof GiftsRoute
   GuestsRoute: typeof GuestsRoute
   IntroRoute: typeof IntroRoute
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
+  OutfitsRoute: typeof OutfitsRoute
   PlanRoute: typeof PlanRoute
   PrivacyRoute: typeof PrivacyRoute
+  RunSheetRoute: typeof RunSheetRoute
   ShareRoute: typeof ShareRoute
   TermsRoute: typeof TermsRoute
   VendorsRoute: typeof VendorsRoute
@@ -216,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/run-sheet': {
+      id: '/run-sheet'
+      path: '/run-sheet'
+      fullPath: '/run-sheet'
+      preLoaderRoute: typeof RunSheetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -228,6 +299,13 @@ declare module '@tanstack/react-router' {
       path: '/plan'
       fullPath: '/plan'
       preLoaderRoute: typeof PlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/outfits': {
+      id: '/outfits'
+      path: '/outfits'
+      fullPath: '/outfits'
+      preLoaderRoute: typeof OutfitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -258,11 +336,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gifts': {
+      id: '/gifts'
+      path: '/gifts'
+      fullPath: '/gifts'
+      preLoaderRoute: typeof GiftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checklist': {
       id: '/checklist'
       path: '/checklist'
       fullPath: '/checklist'
       preLoaderRoute: typeof ChecklistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/album': {
+      id: '/album'
+      path: '/album'
+      fullPath: '/album'
+      preLoaderRoute: typeof AlbumRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -272,18 +364,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/album/$token': {
+      id: '/album/$token'
+      path: '/$token'
+      fullPath: '/album/$token'
+      preLoaderRoute: typeof AlbumTokenRouteImport
+      parentRoute: typeof AlbumRoute
+    }
   }
 }
 
+interface AlbumRouteChildren {
+  AlbumTokenRoute: typeof AlbumTokenRoute
+}
+
+const AlbumRouteChildren: AlbumRouteChildren = {
+  AlbumTokenRoute: AlbumTokenRoute,
+}
+
+const AlbumRouteWithChildren = AlbumRoute._addFileChildren(AlbumRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlbumRoute: AlbumRouteWithChildren,
   ChecklistRoute: ChecklistRoute,
+  GiftsRoute: GiftsRoute,
   GuestsRoute: GuestsRoute,
   IntroRoute: IntroRoute,
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
+  OutfitsRoute: OutfitsRoute,
   PlanRoute: PlanRoute,
   PrivacyRoute: PrivacyRoute,
+  RunSheetRoute: RunSheetRoute,
   ShareRoute: ShareRoute,
   TermsRoute: TermsRoute,
   VendorsRoute: VendorsRoute,
@@ -292,13 +405,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

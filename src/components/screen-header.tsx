@@ -1,21 +1,30 @@
 import type { ReactNode } from "react";
+import { MoreMenuButton } from "@/components/more-menu";
 import { cn } from "@/lib/utils";
 
 export function ScreenHeader({
   eyebrow,
   title,
   children,
+  showMenu = true,
 }: {
   eyebrow?: string;
   title: string;
   children?: ReactNode;
+  /** Profile / hamburger menu — on by default for authenticated app screens. */
+  showMenu?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 px-5 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] backdrop-blur">
-      {eyebrow ? (
-        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p>
-      ) : null}
-      <h1 className="font-serif text-2xl font-medium leading-tight text-foreground">{title}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {eyebrow ? (
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p>
+          ) : null}
+          <h1 className="font-serif text-2xl font-medium leading-tight text-foreground">{title}</h1>
+        </div>
+        {showMenu ? <MoreMenuButton className="mt-0.5 shrink-0" /> : null}
+      </div>
       {children}
     </header>
   );

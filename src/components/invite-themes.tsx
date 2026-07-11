@@ -24,10 +24,11 @@ const inviteImageStyle: CSSProperties = {
   flexShrink: 0,
 };
 
-const EVENT_NAME_SIZE = 20;
-const EVENT_META_SIZE = 15;
+const EVENT_NAME_SIZE = 28;
+const EVENT_META_SIZE = 21;
 const EVENT_BLOCK_GAP = 22;
 const EVENT_META_MARGIN_TOP = 4;
+const EMPTY_EVENTS_SIZE = 30;
 
 function InviteEventList({
   events,
@@ -40,7 +41,7 @@ function InviteEventList({
 }) {
   if (events.length === 0) {
     return (
-      <p style={{ fontFamily: sans, fontSize: 22, lineHeight: 1.4, color: metaColor, margin: 0 }}>
+      <p style={{ fontFamily: sans, fontSize: EMPTY_EVENTS_SIZE, lineHeight: 1.4, color: metaColor, margin: 0 }}>
         Wedding celebrations
       </p>
     );
@@ -90,7 +91,8 @@ function InviteEventList({
 }
 
 function titleScale(): string {
-  return "text-[3.25rem]";
+  // ~1.4× prior 3.25rem (52px) → 4.5rem (72px); fixed across event counts
+  return "text-[4.5rem]";
 }
 
 function headerGap(): string {
@@ -151,7 +153,7 @@ export function MinimalInviteCard({ coupleNames, events, location }: InviteCardP
       </p>
       <h1
         className={cn(
-          "mt-12 text-5xl font-medium tracking-tight text-[#2C2418]",
+          "mt-12 text-[4.5rem] font-medium leading-tight tracking-tight text-[#2C2418]",
         )}
       >
         {coupleNames}

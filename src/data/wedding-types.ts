@@ -77,6 +77,33 @@ export interface CreateTimelineEventInput {
   dressCode?: string;
 }
 
+export const SONG_MOMENT_PRESETS = [
+  "Bride Entry",
+  "Groom Entry",
+  "First Dance",
+  "Sangeet Performance",
+  "Baraat",
+] as const;
+
+export type SongMomentPreset = (typeof SONG_MOMENT_PRESETS)[number];
+
+export interface EventSong {
+  id: string;
+  timelineEventId: string;
+  moment: string;
+  songName: string;
+  artist?: string;
+  link?: string;
+  orderIndex: number;
+}
+
+export interface CreateEventSongInput {
+  moment: string;
+  songName: string;
+  artist?: string;
+  link?: string;
+}
+
 export interface CommonlyMissedTask {
   id: string;
   task: string;

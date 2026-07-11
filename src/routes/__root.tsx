@@ -199,7 +199,8 @@ function RootContent() {
     pathname === "/login" ||
     pathname === "/terms" ||
     pathname === "/privacy" ||
-    pathname === "/intro";
+    pathname === "/intro" ||
+    /^\/album\/[^/]+$/.test(pathname);
 
   useEffect(() => {
     if (status === "unauthenticated" && !isPublicPath) {
@@ -224,6 +225,11 @@ function RootContent() {
 
   if (status === "unauthenticated") {
     if (!isPublicPath) return null;
+    return <Outlet />;
+  }
+
+  // Guest album upload stays outside the authenticated wedding shell
+  if (/^\/album\/[^/]+$/.test(pathname)) {
     return <Outlet />;
   }
 
