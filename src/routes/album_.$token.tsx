@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { MobileFrame } from "@/components/mobile-frame";
 import { fetchGuestAlbumInfo, uploadGuestPhoto } from "@/lib/photo-album-api";
 
-export const Route = createFileRoute("/album/$token")({
+/** Flat route (`album_`) so this is NOT nested under the host `/album` screen. */
+export const Route = createFileRoute("/album_/$token")({
   head: () => ({
     meta: [
       { title: "Share a photo — ShadiPlan" },

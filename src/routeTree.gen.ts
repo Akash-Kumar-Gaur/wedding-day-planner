@@ -25,7 +25,7 @@ import { Route as GiftsRouteImport } from './routes/gifts'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as AlbumRouteImport } from './routes/album'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AlbumTokenRouteImport } from './routes/album.$token'
+import { Route as AlbumTokenRouteImport } from './routes/album_.$token'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
@@ -108,14 +108,14 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlbumTokenRoute = AlbumTokenRouteImport.update({
-  id: '/$token',
-  path: '/$token',
-  getParentRoute: () => AlbumRoute,
+  id: '/album_/$token',
+  path: '/album/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/album': typeof AlbumRouteWithChildren
+  '/album': typeof AlbumRoute
   '/checklist': typeof ChecklistRoute
   '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
@@ -134,7 +134,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/album': typeof AlbumRouteWithChildren
+  '/album': typeof AlbumRoute
   '/checklist': typeof ChecklistRoute
   '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
@@ -154,7 +154,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/album': typeof AlbumRouteWithChildren
+  '/album': typeof AlbumRoute
   '/checklist': typeof ChecklistRoute
   '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
@@ -169,7 +169,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/vendors': typeof VendorsRoute
   '/wallet': typeof WalletRoute
-  '/album/$token': typeof AlbumTokenRoute
+  '/album_/$token': typeof AlbumTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -228,12 +228,12 @@ export interface FileRouteTypes {
     | '/terms'
     | '/vendors'
     | '/wallet'
-    | '/album/$token'
+    | '/album_/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AlbumRoute: typeof AlbumRouteWithChildren
+  AlbumRoute: typeof AlbumRoute
   ChecklistRoute: typeof ChecklistRoute
   GiftsRoute: typeof GiftsRoute
   GuestsRoute: typeof GuestsRoute
@@ -248,6 +248,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VendorsRoute: typeof VendorsRoute
   WalletRoute: typeof WalletRoute
+  AlbumTokenRoute: typeof AlbumTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -364,29 +365,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/album/$token': {
-      id: '/album/$token'
-      path: '/$token'
+    '/album_/$token': {
+      id: '/album_/$token'
+      path: '/album/$token'
       fullPath: '/album/$token'
       preLoaderRoute: typeof AlbumTokenRouteImport
-      parentRoute: typeof AlbumRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface AlbumRouteChildren {
-  AlbumTokenRoute: typeof AlbumTokenRoute
-}
-
-const AlbumRouteChildren: AlbumRouteChildren = {
-  AlbumTokenRoute: AlbumTokenRoute,
-}
-
-const AlbumRouteWithChildren = AlbumRoute._addFileChildren(AlbumRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AlbumRoute: AlbumRouteWithChildren,
+  AlbumRoute: AlbumRoute,
   ChecklistRoute: ChecklistRoute,
   GiftsRoute: GiftsRoute,
   GuestsRoute: GuestsRoute,
@@ -401,7 +392,18 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VendorsRoute: VendorsRoute,
   WalletRoute: WalletRoute,
+  AlbumTokenRoute: AlbumTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
