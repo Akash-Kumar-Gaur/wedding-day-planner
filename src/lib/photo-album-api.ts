@@ -4,6 +4,9 @@ export type PhotoAlbum = {
   id: string;
   weddingId: string;
   accessToken: string;
+  name: string;
+  photoCount: number;
+  createdAt: string;
 };
 
 export type PhotoUpload = {
@@ -33,6 +36,9 @@ type AlbumRow = {
   id: string;
   wedding_id: string;
   access_token: string;
+  name: string | null;
+  created_at: string;
+  photo_uploads?: { count: number }[] | null;
 };
 
 type UploadRow = {
@@ -45,10 +51,14 @@ type UploadRow = {
 };
 
 function mapAlbum(row: AlbumRow): PhotoAlbum {
+  const count = row.photo_uploads?.[0]?.count;
   return {
     id: row.id,
     weddingId: row.wedding_id,
     accessToken: row.access_token,
+    name: row.name?.trim() || "Wedding Photos",
+    photoCount: typeof count === "number" ? count : 0,
+    createdAt: row.created_at,
   };
 }
 
@@ -157,24 +167,42 @@ export function groupByUploader(uploads: PhotoUpload[]): UploaderGroup[] {
     );
 }
 
-export async function ensurePhotoAlbum(weddingId: string): Promise<PhotoAlbum> {
-  const { data: existing, error: fetchError } = await supabase
-    .from("photo_albums")
-    .select("*")
-    .eq("wedding_id", weddingId)
-    .maybeSingle();
+const ALBUM_SELECT =
+  "id, wedding_id, access_token, name, created_at, photo_uploads(count)";
 
-  if (fetchError) throw fetchError;
-  if (existing) return mapAlbum(existing as AlbumRow);
-
+/** List all albums for a wedding (creates a default if none exist). */
+export async function fetchWeddingAlbums(weddingId: string): Promise<PhotoAlbum[]> {
   const { data, error } = await supabase
     .from("photo_albums")
-    .insert({ wedding_id: weddingId })
-    .select()
+    .select(ALBUM_SELECT)
+    .eq("wedding_id", weddingId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  const albums = (data ?? []).map((row) => mapAlbum(row as AlbumRow));
+  if (albums.length > 0) return albums;
+  return [await createPhotoAlbum(weddingId, "Wedding Photos")];
+}
+
+export async function createPhotoAlbum(
+  weddingId: string,
+  name: string,
+): Promise<PhotoAlbum> {
+  const trimmed = name.trim() || "Wedding Photos";
+  const { data, error } = await supabase
+    .from("photo_albums")
+    .insert({ wedding_id: weddingId, name: trimmed })
+    .select(ALBUM_SELECT)
     .single();
 
   if (error) throw error;
   return mapAlbum(data as AlbumRow);
+}
+
+/** @deprecated Prefer fetchWeddingAlbums — kept for call sites that want a single album. */
+export async function ensurePhotoAlbum(weddingId: string): Promise<PhotoAlbum> {
+  const albums = await fetchWeddingAlbums(weddingId);
+  return albums[0]!;
 }
 
 /** Host gallery — never selects delete_token (column revoked + explicit list). */
@@ -198,14 +226,52 @@ export async function getSignedPhotoUrl(storagePath: string): Promise<string> {
   return data.signedUrl;
 }
 
+/**
+ * Delete an upload row. Removes the Storage object only when no other
+ * photo_uploads row still references the same storage_path (shared copies).
+ */
 export async function deletePhotoUpload(upload: PhotoUpload): Promise<void> {
-  const { error: storageError } = await supabase.storage
-    .from("wedding-photos")
-    .remove([upload.storagePath]);
-  if (storageError) throw storageError;
-
   const { error } = await supabase.from("photo_uploads").delete().eq("id", upload.id);
   if (error) throw error;
+
+  const { count, error: countError } = await supabase
+    .from("photo_uploads")
+    .select("id", { count: "exact", head: true })
+    .eq("storage_path", upload.storagePath);
+  if (countError) throw countError;
+
+  if ((count ?? 0) === 0) {
+    const { error: storageError } = await supabase.storage
+      .from("wedding-photos")
+      .remove([upload.storagePath]);
+    if (storageError) throw storageError;
+  }
+}
+
+export async function movePhoto(photoId: string, newAlbumId: string): Promise<void> {
+  const { error } = await supabase
+    .from("photo_uploads")
+    .update({ album_id: newAlbumId })
+    .eq("id", photoId);
+  if (error) throw error;
+}
+
+export async function copyPhoto(photo: PhotoUpload, newAlbumId: string): Promise<void> {
+  const { error } = await supabase.from("photo_uploads").insert({
+    album_id: newAlbumId,
+    storage_path: photo.storagePath,
+    uploader_name: photo.uploaderName ?? null,
+    uploader_session_id: photo.uploaderSessionId ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function movePhotos(photos: PhotoUpload[], newAlbumId: string): Promise<void> {
+  await Promise.all(photos.map((p) => movePhoto(p.id, newAlbumId)));
+}
+
+export async function copyPhotos(photos: PhotoUpload[], newAlbumId: string): Promise<void> {
+  await Promise.all(photos.map((p) => copyPhoto(p, newAlbumId)));
 }
 
 export type GuestUploadResult = {
@@ -276,8 +342,8 @@ export async function checkStillExists(input: {
 
 /**
  * Guest delete via ownership token.
- * Uses an edge function so Storage API removes the file (SQL DELETE on
- * storage.objects is blocked by storage.protect_delete).
+ * Uses an edge function so Storage API removes the file only when no other
+ * photo_uploads row still references the same storage_path.
  */
 export async function deleteGuestPhoto(input: {
   uploadId: string;

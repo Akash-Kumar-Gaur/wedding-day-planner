@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Camera, Check, Download, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
+import { PhotoLightbox, type LightboxPhoto } from "@/components/photo-lightbox";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ function GuestAlbumUploadScreen() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!formatOk) return;
@@ -234,6 +236,15 @@ function GuestAlbumUploadScreen() {
 
   const mineListEmpty = myUploads.length === 0 && removedIds.size === 0;
 
+  const lightboxPhotos: LightboxPhoto[] = useMemo(
+    () =>
+      myUploads.map((u) => ({
+        id: u.id,
+        storagePath: u.storagePath,
+      })),
+    [myUploads],
+  );
+
   const handleDownloadMine = async () => {
     if (myUploads.length === 0) return;
     setDownloading(true);
@@ -277,7 +288,10 @@ function GuestAlbumUploadScreen() {
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={() => setTab("upload")}
+                onClick={() => {
+                  setTab("upload");
+                  setLightboxIndex(null);
+                }}
                 className={cn(
                   "flex-1 rounded-full border px-3 py-2 text-sm font-medium transition-colors",
                   tab === "upload"
@@ -472,12 +486,13 @@ function GuestAlbumUploadScreen() {
                       {[...removedIds].map((id) => (
                         <RemovedPhotoCard key={`removed-${id}`} onDismiss={() => dismissRemoved(id)} />
                       ))}
-                      {myUploads.map((upload) => (
+                      {myUploads.map((upload, i) => (
                         <GuestMyPhotoCard
                           key={upload.id}
                           upload={upload}
                           confirming={confirmDeleteId === upload.id}
                           deleting={deletingId === upload.id}
+                          onOpen={() => setLightboxIndex(i)}
                           onRequestDelete={() => setConfirmDeleteId(upload.id)}
                           onCancelDelete={() => setConfirmDeleteId(null)}
                           onConfirmDelete={() => void handleDeleteMine(upload)}
@@ -491,6 +506,15 @@ function GuestAlbumUploadScreen() {
           </>
         )}
       </div>
+
+      {lightboxIndex != null && lightboxPhotos.length > 0 ? (
+        <PhotoLightbox
+          photos={lightboxPhotos}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onIndexChange={setLightboxIndex}
+        />
+      ) : null}
     </MobileFrame>
   );
 }
@@ -516,6 +540,7 @@ function GuestMyPhotoCard({
   upload,
   confirming,
   deleting,
+  onOpen,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -523,6 +548,7 @@ function GuestMyPhotoCard({
   upload: GuestMyUpload;
   confirming: boolean;
   deleting: boolean;
+  onOpen: () => void;
   onRequestDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -547,7 +573,14 @@ function GuestMyPhotoCard({
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="relative aspect-square bg-muted">
         {url ? (
-          <img src={url} alt="" className="h-full w-full object-cover" />
+          <button
+            type="button"
+            onClick={onOpen}
+            className="h-full w-full cursor-zoom-in"
+            aria-label="View photo full size"
+          >
+            <img src={url} alt="" className="h-full w-full object-cover" />
+          </button>
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             …
@@ -556,7 +589,10 @@ function GuestMyPhotoCard({
         {!confirming ? (
           <button
             type="button"
-            onClick={onRequestDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestDelete();
+            }}
             className="absolute right-2 top-2 rounded-full bg-background/90 p-1.5 text-muted-foreground shadow hover:text-[color:var(--destructive)]"
             aria-label="Delete my photo"
           >
@@ -564,7 +600,10 @@ function GuestMyPhotoCard({
           </button>
         ) : null}
         {confirming ? (
-          <div className="absolute inset-x-0 bottom-0 space-y-2 bg-background/95 p-2.5 backdrop-blur-sm">
+          <div
+            className="absolute inset-x-0 bottom-0 space-y-2 bg-background/95 p-2.5 backdrop-blur-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
             <p className="text-center text-[11px] font-medium text-foreground">Delete this photo?</p>
             <div className="flex gap-1.5">
               <Button

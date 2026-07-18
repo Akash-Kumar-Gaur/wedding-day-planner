@@ -59,10 +59,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { error: storageError } = await admin.storage
-      .from("wedding-photos")
-      .remove([row.storage_path as string]);
-    if (storageError) throw storageError;
+    const storagePath = row.storage_path as string;
 
     const { error: dbError } = await admin
       .from("photo_uploads")
@@ -70,6 +67,20 @@ Deno.serve(async (req) => {
       .eq("id", uploadId)
       .eq("delete_token", deleteToken);
     if (dbError) throw dbError;
+
+    // Only remove the Storage object when no other album still references it (copies share path).
+    const { count, error: countError } = await admin
+      .from("photo_uploads")
+      .select("id", { count: "exact", head: true })
+      .eq("storage_path", storagePath);
+    if (countError) throw countError;
+
+    if ((count ?? 0) === 0) {
+      const { error: storageError } = await admin.storage
+        .from("wedding-photos")
+        .remove([storagePath]);
+      if (storageError) throw storageError;
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
