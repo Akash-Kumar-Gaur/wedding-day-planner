@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useState } from "react";
-import { Camera, Copy, Download, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Camera, Copy, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScreenHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import {
   ensurePhotoAlbum,
   fetchAlbumUploads,
   getSignedPhotoUrl,
+  groupByUploader,
   type PhotoUpload,
+  type UploaderGroup,
 } from "@/lib/photo-album-api";
 import { downloadPhotosAsZip } from "@/lib/photo-zip";
 import { useWeddingData } from "@/lib/wedding-data";
@@ -34,6 +36,7 @@ function AlbumHostScreen() {
   const weddingId = wedding?.id;
   const queryClient = useQueryClient();
   const [downloading, setDownloading] = useState(false);
+  const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
 
   const albumQuery = useQuery({
     queryKey: weddingQueryKeys.photoAlbum(weddingId ?? ""),
@@ -46,6 +49,13 @@ function AlbumHostScreen() {
     queryFn: () => fetchAlbumUploads(albumQuery.data!.id),
     enabled: !!albumQuery.data?.id,
   });
+
+  const groups = useMemo(
+    () => groupByUploader(uploadsQuery.data ?? []),
+    [uploadsQuery.data],
+  );
+
+  const openGroup = groups.find((g) => g.key === openGroupKey) ?? null;
 
   const deleteMutation = useMutation({
     mutationFn: (upload: PhotoUpload) => deletePhotoUpload(upload),
@@ -67,8 +77,7 @@ function AlbumHostScreen() {
     toast.success("Guest link copied");
   };
 
-  const handleDownloadAll = async () => {
-    const uploads = uploadsQuery.data ?? [];
+  const zipPhotos = async (uploads: PhotoUpload[], zipName: string) => {
     if (uploads.length === 0) return;
     setDownloading(true);
     try {
@@ -78,16 +87,20 @@ function AlbumHostScreen() {
           url: await getSignedPhotoUrl(u.storagePath),
         })),
       );
-      const slug =
-        wedding?.coupleNames.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") ||
-        "wedding";
-      await downloadPhotosAsZip(photos, `${slug}-album`);
+      await downloadPhotosAsZip(photos, zipName);
       toast.success("Download started");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleDownloadAll = async () => {
+    const slug =
+      wedding?.coupleNames.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") ||
+      "wedding";
+    await zipPhotos(uploadsQuery.data ?? [], `${slug}-album`);
   };
 
   if (!wedding) return null;
@@ -103,67 +116,183 @@ function AlbumHostScreen() {
       </ScreenHeader>
 
       <div className="space-y-5 px-5 pt-5 pb-8">
-        <Card className="flex flex-col items-center gap-4 rounded-2xl p-6">
-          {albumQuery.isPending ? (
-            <p className="text-sm text-muted-foreground">Preparing album…</p>
-          ) : albumQuery.data ? (
-            <>
-              <div className="rounded-xl bg-white p-3">
-                <QRCodeSVG value={guestUrl} size={180} level="M" />
-              </div>
-              <p className="max-w-xs break-all text-center text-xs text-muted-foreground">
-                {guestUrl}
-              </p>
-              <Button type="button" variant="outline" className="gap-2" onClick={() => void copyLink()}>
-                <Copy className="h-4 w-4" />
-                Copy guest link
-              </Button>
-            </>
-          ) : (
-            <p className="text-sm text-[color:var(--destructive)]">Could not create album.</p>
-          )}
-        </Card>
+        {!openGroup ? (
+          <Card className="flex flex-col items-center gap-4 rounded-2xl p-6">
+            {albumQuery.isPending ? (
+              <p className="text-sm text-muted-foreground">Preparing album…</p>
+            ) : albumQuery.data ? (
+              <>
+                <div className="rounded-xl bg-white p-3">
+                  <QRCodeSVG value={guestUrl} size={180} level="M" />
+                </div>
+                <p className="max-w-xs break-all text-center text-xs text-muted-foreground">
+                  {guestUrl}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => void copyLink()}
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy guest link
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-[color:var(--destructive)]">Could not create album.</p>
+            )}
+          </Card>
+        ) : null}
 
         <section>
-          <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <h2 className="font-serif text-lg text-foreground">Uploads ({uploadCount})</h2>
-            {uploadCount > 0 ? (
-              <Button
+          {openGroup ? (
+            <>
+              <button
                 type="button"
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                disabled={downloading}
-                onClick={() => void handleDownloadAll()}
+                onClick={() => setOpenGroupKey(null)}
+                className="mb-3 inline-flex items-center gap-1 text-sm text-primary"
               >
-                <Download className="h-3.5 w-3.5" />
-                {downloading ? "Zipping…" : "Download all"}
-              </Button>
-            ) : null}
-          </div>
-          {uploadsQuery.isPending ? (
-            <p className="text-sm text-muted-foreground">Loading photos…</p>
-          ) : uploadCount === 0 ? (
-            <Card className="rounded-2xl p-6 text-center">
-              <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                No photos yet — share the QR at the wedding.
-              </p>
-            </Card>
+                <ArrowLeft className="h-3.5 w-3.5" />
+                All guests
+              </button>
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <div>
+                  <h2 className="font-serif text-lg text-foreground">{openGroup.label}</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {openGroup.photoCount} photo{openGroup.photoCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={downloading}
+                  onClick={() =>
+                    void zipPhotos(
+                      openGroup.photos,
+                      `${openGroup.label.replace(/[^\w\s-]/g, "").trim() || "guest"}-photos`,
+                    )
+                  }
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {downloading ? "Zipping…" : "Download"}
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {openGroup.photos.map((upload) => (
+                  <HostPhotoCard
+                    key={upload.id}
+                    upload={upload}
+                    onDelete={() => deleteMutation.mutate(upload)}
+                    deleting={deleteMutation.isPending}
+                  />
+                ))}
+              </div>
+            </>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {uploadsQuery.data!.map((upload) => (
-                <HostPhotoCard
-                  key={upload.id}
-                  upload={upload}
-                  onDelete={() => deleteMutation.mutate(upload)}
-                  deleting={deleteMutation.isPending}
-                />
-              ))}
-            </div>
+            <>
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                <h2 className="font-serif text-lg text-foreground">
+                  Guests ({groups.length}) · {uploadCount} photos
+                </h2>
+                {uploadCount > 0 ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={downloading}
+                    onClick={() => void handleDownloadAll()}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {downloading ? "Zipping…" : "Download all"}
+                  </Button>
+                ) : null}
+              </div>
+              {uploadsQuery.isPending ? (
+                <p className="text-sm text-muted-foreground">Loading photos…</p>
+              ) : uploadCount === 0 ? (
+                <Card className="rounded-2xl p-6 text-center">
+                  <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No photos yet — share the QR at the wedding.
+                  </p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {groups.map((group) => (
+                    <UploaderGroupCard
+                      key={group.key}
+                      group={group}
+                      onOpen={() => setOpenGroupKey(group.key)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function UploaderGroupCard({
+  group,
+  onOpen,
+}: {
+  group: UploaderGroup;
+  onOpen: () => void;
+}) {
+  const previewPhotos = group.photos.slice(0, 4);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full overflow-hidden rounded-2xl border border-border bg-card text-left transition-colors hover:bg-muted/30"
+    >
+      <div className="grid grid-cols-4 gap-0.5 bg-muted">
+        {previewPhotos.map((photo) => (
+          <GroupThumb key={photo.id} storagePath={photo.storagePath} />
+        ))}
+        {Array.from({ length: Math.max(0, 4 - previewPhotos.length) }).map((_, i) => (
+          <div key={`empty-${i}`} className="aspect-square bg-muted" />
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">{group.label}</p>
+          <p className="text-xs text-muted-foreground">
+            {group.photoCount} photo{group.photoCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function GroupThumb({ storagePath }: { storagePath: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getSignedPhotoUrl(storagePath)
+      .then((signed) => {
+        if (!cancelled) setUrl(signed);
+      })
+      .catch(() => {
+        if (!cancelled) setUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storagePath]);
+
+  return (
+    <div className="aspect-square bg-muted">
+      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : null}
     </div>
   );
 }
@@ -213,9 +342,6 @@ function HostPhotoCard({
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
-      {upload.uploaderName ? (
-        <p className="truncate px-2 py-1.5 text-xs text-muted-foreground">{upload.uploaderName}</p>
-      ) : null}
     </div>
   );
 }

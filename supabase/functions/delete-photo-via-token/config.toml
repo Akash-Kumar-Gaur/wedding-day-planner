@@ -1,0 +1,3 @@
+# Guests use the anon key + delete_token possession (no user JWT).
+# Gateway JWT verification would block browser callers without a session.
+verify_jwt = false

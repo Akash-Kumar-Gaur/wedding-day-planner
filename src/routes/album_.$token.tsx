@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MobileFrame } from "@/components/mobile-frame";
 import {
+  checkStillExists,
   deleteGuestPhoto,
   fetchGuestAlbumInfo,
+  getOrCreateSessionId,
   getSignedPhotoUrl,
   loadMyUploads,
   removeMyUpload,
@@ -51,63 +53,155 @@ function GuestAlbumUploadScreen() {
 
   const [tab, setTab] = useState<Tab>("upload");
   const [name, setName] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(
+    null,
+  );
+  const [doneCount, setDoneCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [myUploads, setMyUploads] = useState<GuestMyUpload[]>([]);
+  /** Host-deleted photos: show once, then drop from localStorage. */
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (!formatOk) return;
     setMyUploads(loadMyUploads(token));
+    setRemovedIds(new Set());
+    setConfirmDeleteId(null);
+    getOrCreateSessionId(token);
   }, [token, formatOk]);
 
-  const onFileChange = (next: File | null) => {
-    setFile(next);
-    setDone(false);
-    setError(null);
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(next ? URL.createObjectURL(next) : null);
-  };
+  const mineFingerprint = myUploads
+    .map((u) => u.id)
+    .sort()
+    .join(",");
 
-  const resetForAnother = () => {
-    setDone(false);
+  useEffect(() => {
+    if (!formatOk || tab !== "mine") return;
+    const local = loadMyUploads(token);
+    if (local.length === 0) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const gone: string[] = [];
+      await Promise.all(
+        local.map(async (upload) => {
+          try {
+            const exists = await checkStillExists({
+              uploadId: upload.id,
+              deleteToken: upload.deleteToken,
+            });
+            if (!exists) gone.push(upload.id);
+          } catch {
+            /* keep showing until we know it's gone */
+          }
+        }),
+      );
+      if (cancelled || gone.length === 0) return;
+
+      for (const id of gone) {
+        removeMyUpload(token, id);
+      }
+      setMyUploads(loadMyUploads(token));
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of gone) next.add(id);
+        return next;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, formatOk, tab, mineFingerprint]);
+
+  useEffect(() => {
+    return () => {
+      for (const url of previews) URL.revokeObjectURL(url);
+    };
+  }, [previews]);
+
+  const clearSelection = () => {
+    for (const url of previews) URL.revokeObjectURL(url);
+    setFiles([]);
+    setPreviews([]);
     setError(null);
-    onFileChange(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const onFilesSelected = (list: FileList | null) => {
+    const next = list ? Array.from(list).filter((f) => f.type.startsWith("image/")) : [];
+    for (const url of previews) URL.revokeObjectURL(url);
+    setFiles(next);
+    setPreviews(next.map((f) => URL.createObjectURL(f)));
+    setDoneCount(0);
+    setError(null);
+    setUploadProgress(null);
+  };
+
+  const resetForAnother = () => {
+    setDoneCount(0);
+    setUploadProgress(null);
+    clearSelection();
+  };
+
   const handleUpload = async () => {
-    if (!file || !formatOk || !albumQuery.data) return;
+    if (files.length === 0 || !formatOk || !albumQuery.data) return;
     setUploading(true);
     setError(null);
+    const sessionId = getOrCreateSessionId(token);
+    const total = files.length;
+    let completed = 0;
+    let failed = 0;
+    setUploadProgress({ completed: 0, total });
+
     try {
-      const result = await uploadGuestPhoto({
-        token,
-        file,
-        uploaderName: name.trim() || undefined,
-      });
-      setMyUploads(
-        saveMyUpload(token, {
-          id: result.id,
-          deleteToken: result.deleteToken,
-          storagePath: result.storagePath,
-        }),
-      );
-      setDone(true);
-      onFileChange(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed — please try again");
+      for (const file of files) {
+        try {
+          const result = await uploadGuestPhoto({
+            token,
+            file,
+            uploaderName: name.trim() || undefined,
+            sessionId,
+          });
+          setMyUploads(
+            saveMyUpload(token, {
+              id: result.id,
+              deleteToken: result.deleteToken,
+              storagePath: result.storagePath,
+            }),
+          );
+          completed++;
+        } catch {
+          failed++;
+        }
+        setUploadProgress({ completed: completed + failed, total });
+      }
+
+      if (completed === 0) {
+        setError("Upload failed — please try again");
+        return;
+      }
+
+      setDoneCount(completed);
+      clearSelection();
+      if (failed > 0) {
+        toast.error(`${failed} of ${total} photos failed to upload`);
+      }
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   };
 
   const handleDeleteMine = async (upload: GuestMyUpload) => {
-    if (!window.confirm("Delete this photo?")) return;
+    setDeletingId(upload.id);
     try {
       const ok = await deleteGuestPhoto({
         uploadId: upload.id,
@@ -115,13 +209,30 @@ function GuestAlbumUploadScreen() {
       });
       if (!ok) {
         toast.error("Could not delete — it may already be gone");
+        setMyUploads(removeMyUpload(token, upload.id));
+        setRemovedIds((prev) => new Set(prev).add(upload.id));
+        setConfirmDeleteId(null);
+        return;
       }
       setMyUploads(removeMyUpload(token, upload.id));
+      setConfirmDeleteId(null);
       toast.success("Photo deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not delete photo");
+    } finally {
+      setDeletingId(null);
     }
   };
+
+  const dismissRemoved = (uploadId: string) => {
+    setRemovedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(uploadId);
+      return next;
+    });
+  };
+
+  const mineListEmpty = myUploads.length === 0 && removedIds.size === 0;
 
   const handleDownloadMine = async () => {
     if (myUploads.length === 0) return;
@@ -144,6 +255,8 @@ function GuestAlbumUploadScreen() {
 
   const invalidLink =
     !formatOk || albumQuery.isError || (albumQuery.isSuccess && albumQuery.data === null);
+
+  const showDone = doneCount > 0 && files.length === 0 && !uploading;
 
   return (
     <MobileFrame>
@@ -189,22 +302,24 @@ function GuestAlbumUploadScreen() {
             </div>
 
             {tab === "upload" ? (
-              done ? (
+              showDone ? (
                 <div className="mt-6 space-y-5">
                   <div className="rounded-2xl border border-border bg-card p-6 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--success)]/15">
                       <Check className="h-6 w-6 text-[color:var(--success)]" />
                     </div>
                     <h1 className="mt-4 font-serif text-2xl text-foreground">
-                      Thanks! Your photo has been added.
+                      {doneCount === 1
+                        ? "Thanks! Your photo has been added."
+                        : `Thanks! ${doneCount} photos have been added.`}
                     </h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {albumQuery.data!.coupleNames} will see it in their wedding album.
+                      {albumQuery.data!.coupleNames} will see them in their wedding album.
                     </p>
                   </div>
                   <Button className="w-full gap-2" variant="outline" onClick={resetForAnother}>
                     <ImagePlus className="h-4 w-4" />
-                    Upload another photo
+                    Upload more photos
                   </Button>
                   <Button className="w-full gap-2" variant="ghost" onClick={() => setTab("mine")}>
                     View my photos
@@ -217,7 +332,7 @@ function GuestAlbumUploadScreen() {
                       Share your photos from {albumQuery.data!.coupleNames}&apos;s wedding!
                     </h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      No account needed — just pick a photo and send it.
+                      No account needed — pick one photo or several at once.
                     </p>
                   </div>
 
@@ -229,20 +344,40 @@ function GuestAlbumUploadScreen() {
                       onChange={(e) => setName(e.target.value)}
                       placeholder="So they know who sent it"
                       autoComplete="name"
+                      disabled={uploading}
                     />
                   </div>
 
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center transition-colors hover:bg-muted/40">
-                    {preview ? (
-                      <img src={preview} alt="" className="max-h-56 rounded-xl object-contain" />
+                  <label
+                    className={cn(
+                      "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center transition-colors hover:bg-muted/40",
+                      uploading && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    {previews.length > 0 ? (
+                      <div className="grid w-full grid-cols-3 gap-2">
+                        {previews.slice(0, 6).map((src) => (
+                          <img
+                            key={src}
+                            src={src}
+                            alt=""
+                            className="aspect-square rounded-lg object-cover"
+                          />
+                        ))}
+                        {previews.length > 6 ? (
+                          <div className="flex aspect-square items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
+                            +{previews.length - 6}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : (
                       <>
                         <Camera className="h-8 w-8 text-muted-foreground" />
                         <span className="text-sm font-medium text-foreground">
-                          Take or choose a photo
+                          Take or choose photos
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          JPEG, PNG, or HEIC · max 10MB
+                          Select multiple · JPEG, PNG, or HEIC · max 10MB each
                         </span>
                       </>
                     )}
@@ -250,10 +385,37 @@ function GuestAlbumUploadScreen() {
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       className="sr-only"
-                      onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+                      disabled={uploading}
+                      onChange={(e) => onFilesSelected(e.target.files)}
                     />
                   </label>
+
+                  {files.length > 0 && !uploading ? (
+                    <p className="text-center text-xs text-muted-foreground">
+                      {files.length} photo{files.length === 1 ? "" : "s"} selected
+                    </p>
+                  ) : null}
+
+                  {uploadProgress ? (
+                    <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-center">
+                      <p className="text-sm font-medium text-foreground">
+                        Uploading {Math.min(uploadProgress.completed + 1, uploadProgress.total)} of{" "}
+                        {uploadProgress.total}…
+                      </p>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{
+                            width: `${Math.round(
+                              (uploadProgress.completed / uploadProgress.total) * 100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
 
                   {error ? (
                     <p className="text-sm text-[color:var(--destructive)]">{error}</p>
@@ -262,10 +424,16 @@ function GuestAlbumUploadScreen() {
                   <Button
                     className="w-full"
                     size="lg"
-                    disabled={!file || uploading}
+                    disabled={files.length === 0 || uploading}
                     onClick={() => void handleUpload()}
                   >
-                    {uploading ? "Uploading…" : "Upload photo"}
+                    {uploading
+                      ? uploadProgress
+                        ? `Uploading ${uploadProgress.completed} of ${uploadProgress.total}…`
+                        : "Uploading…"
+                      : files.length > 1
+                        ? `Upload ${files.length} photos`
+                        : "Upload photo"}
                   </Button>
                 </div>
               )
@@ -280,7 +448,7 @@ function GuestAlbumUploadScreen() {
                   </p>
                 </div>
 
-                {myUploads.length === 0 ? (
+                {mineListEmpty ? (
                   <Card className="rounded-2xl p-6 text-center">
                     <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
                     <p className="mt-3 text-sm text-muted-foreground">
@@ -289,21 +457,30 @@ function GuestAlbumUploadScreen() {
                   </Card>
                 ) : (
                   <>
-                    <Button
-                      className="w-full gap-2"
-                      variant="outline"
-                      disabled={downloading}
-                      onClick={() => void handleDownloadMine()}
-                    >
-                      <Download className="h-4 w-4" />
-                      {downloading ? "Preparing zip…" : "Download all my photos"}
-                    </Button>
+                    {myUploads.length > 0 ? (
+                      <Button
+                        className="w-full gap-2"
+                        variant="outline"
+                        disabled={downloading}
+                        onClick={() => void handleDownloadMine()}
+                      >
+                        <Download className="h-4 w-4" />
+                        {downloading ? "Preparing zip…" : "Download all my photos"}
+                      </Button>
+                    ) : null}
                     <div className="grid grid-cols-2 gap-3">
+                      {[...removedIds].map((id) => (
+                        <RemovedPhotoCard key={`removed-${id}`} onDismiss={() => dismissRemoved(id)} />
+                      ))}
                       {myUploads.map((upload) => (
                         <GuestMyPhotoCard
                           key={upload.id}
                           upload={upload}
-                          onDelete={() => void handleDeleteMine(upload)}
+                          confirming={confirmDeleteId === upload.id}
+                          deleting={deletingId === upload.id}
+                          onRequestDelete={() => setConfirmDeleteId(upload.id)}
+                          onCancelDelete={() => setConfirmDeleteId(null)}
+                          onConfirmDelete={() => void handleDeleteMine(upload)}
                         />
                       ))}
                     </div>
@@ -318,12 +495,37 @@ function GuestAlbumUploadScreen() {
   );
 }
 
+function RemovedPhotoCard({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-muted/60">
+      <div className="relative flex aspect-square flex-col items-center justify-center gap-2 px-3 text-center">
+        <p className="text-xs font-medium text-muted-foreground">This photo was removed</p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function GuestMyPhotoCard({
   upload,
-  onDelete,
+  confirming,
+  deleting,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
 }: {
   upload: GuestMyUpload;
-  onDelete: () => void;
+  confirming: boolean;
+  deleting: boolean;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
@@ -351,14 +553,43 @@ function GuestMyPhotoCard({
             …
           </div>
         )}
-        <button
-          type="button"
-          onClick={onDelete}
-          className="absolute right-2 top-2 rounded-full bg-background/90 p-1.5 text-muted-foreground shadow hover:text-[color:var(--destructive)]"
-          aria-label="Delete my photo"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        {!confirming ? (
+          <button
+            type="button"
+            onClick={onRequestDelete}
+            className="absolute right-2 top-2 rounded-full bg-background/90 p-1.5 text-muted-foreground shadow hover:text-[color:var(--destructive)]"
+            aria-label="Delete my photo"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+        {confirming ? (
+          <div className="absolute inset-x-0 bottom-0 space-y-2 bg-background/95 p-2.5 backdrop-blur-sm">
+            <p className="text-center text-[11px] font-medium text-foreground">Delete this photo?</p>
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 flex-1 px-2 text-xs"
+                disabled={deleting}
+                onClick={onCancelDelete}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="h-8 flex-1 px-2 text-xs"
+                disabled={deleting}
+                onClick={onConfirmDelete}
+              >
+                {deleting ? "…" : "Delete"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
