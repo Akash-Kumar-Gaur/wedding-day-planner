@@ -1,8 +1,20 @@
 import { Link } from "@tanstack/react-router";
-import { Camera, ClipboardList, Gift, LogOut, Menu, Shirt, UserPlus, X } from "lucide-react";
+import {
+  Camera,
+  ClipboardList,
+  Gift,
+  LogOut,
+  Megaphone,
+  Menu,
+  Phone,
+  Shirt,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
+import { useIsDevUser } from "@/lib/dev-access";
 import { cn } from "@/lib/utils";
 
 const MENU_LINKS = [
@@ -15,12 +27,19 @@ const MENU_LINKS = [
     icon: ClipboardList,
   },
   { to: "/album", label: "Photo album", description: "Guest uploads via QR", icon: Camera },
+  {
+    to: "/emergency-contacts",
+    label: "Emergency contacts",
+    description: "Vendors & day-of dial list",
+    icon: Phone,
+  },
   { to: "/share", label: "Share planning", description: "Invite collaborators", icon: UserPlus },
 ] as const;
 
 export function MoreMenuButton({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const { signOut } = useAuth();
+  const isDevUser = useIsDevUser();
 
   return (
     <>
@@ -62,6 +81,22 @@ export function MoreMenuButton({ className }: { className?: string }) {
                 </Link>
               );
             })}
+
+            {isDevUser ? (
+              <Link
+                to="/dev-broadcast"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-muted/60"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                  <Megaphone className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-foreground">Broadcast push</span>
+                  <span className="block text-xs text-muted-foreground">Dev only — all devices</span>
+                </span>
+              </Link>
+            ) : null}
           </nav>
 
           <button

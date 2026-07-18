@@ -104,6 +104,8 @@ export interface CreateEventSongInput {
   link?: string;
 }
 
+export type UpdateEventSongInput = Partial<CreateEventSongInput>;
+
 export interface CommonlyMissedTask {
   id: string;
   task: string;
@@ -144,6 +146,7 @@ export interface Transaction {
   amount: number;
   date: string;
   note?: string;
+  taggedFor?: string[];
 }
 
 export interface CreateExpenseInput {
@@ -152,9 +155,19 @@ export interface CreateExpenseInput {
   vendorName?: string;
   date: string;
   note?: string;
+  taggedFor?: string[];
 }
 
 export type UpdateExpenseInput = Partial<CreateExpenseInput>;
+
+export const EXPENSE_TAG_PRESETS = [
+  "Bride",
+  "Groom",
+  "Father of the Bride",
+  "Mother of the Bride",
+  "Father of the Groom",
+  "Mother of the Groom",
+] as const;
 
 export interface Wedding {
   id: string;
@@ -203,6 +216,8 @@ export interface CreateVendorInput {
   status: VendorStatus;
   notes?: string;
 }
+
+export type UpdateVendorInput = CreateVendorInput;
 
 export interface CreateGuestGroupInput {
   name: string;

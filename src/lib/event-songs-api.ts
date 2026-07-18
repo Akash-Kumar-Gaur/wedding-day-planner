@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { CreateEventSongInput, EventSong } from "@/data/wedding-types";
+import type { CreateEventSongInput, EventSong, UpdateEventSongInput } from "@/data/wedding-types";
 
 type EventSongRow = {
   id: string;
@@ -63,6 +63,17 @@ export async function insertEventSong(
 
   if (error) throw error;
   return mapEventSong(data as EventSongRow);
+}
+
+export async function updateEventSong(id: string, patch: UpdateEventSongInput): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (patch.moment !== undefined) payload.moment = patch.moment.trim();
+  if (patch.songName !== undefined) payload.song_name = patch.songName.trim();
+  if (patch.artist !== undefined) payload.artist = patch.artist?.trim() || null;
+  if (patch.link !== undefined) payload.link = patch.link?.trim() || null;
+
+  const { error } = await supabase.from("event_songs").update(payload).eq("id", id);
+  if (error) throw error;
 }
 
 export async function deleteEventSong(id: string): Promise<void> {

@@ -22,6 +22,8 @@ import { Route as InviteRouteImport } from './routes/invite'
 import { Route as IntroRouteImport } from './routes/intro'
 import { Route as GuestsRouteImport } from './routes/guests'
 import { Route as GiftsRouteImport } from './routes/gifts'
+import { Route as EmergencyContactsRouteImport } from './routes/emergency-contacts'
+import { Route as DevBroadcastRouteImport } from './routes/dev-broadcast'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as AlbumRouteImport } from './routes/album'
 import { Route as IndexRouteImport } from './routes/index'
@@ -92,6 +94,16 @@ const GiftsRoute = GiftsRouteImport.update({
   path: '/gifts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmergencyContactsRoute = EmergencyContactsRouteImport.update({
+  id: '/emergency-contacts',
+  path: '/emergency-contacts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevBroadcastRoute = DevBroadcastRouteImport.update({
+  id: '/dev-broadcast',
+  path: '/dev-broadcast',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChecklistRoute = ChecklistRouteImport.update({
   id: '/checklist',
   path: '/checklist',
@@ -117,6 +129,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/album': typeof AlbumRoute
   '/checklist': typeof ChecklistRoute
+  '/dev-broadcast': typeof DevBroadcastRoute
+  '/emergency-contacts': typeof EmergencyContactsRoute
   '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
   '/intro': typeof IntroRoute
@@ -136,6 +150,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/album': typeof AlbumRoute
   '/checklist': typeof ChecklistRoute
+  '/dev-broadcast': typeof DevBroadcastRoute
+  '/emergency-contacts': typeof EmergencyContactsRoute
   '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
   '/intro': typeof IntroRoute
@@ -156,6 +172,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/album': typeof AlbumRoute
   '/checklist': typeof ChecklistRoute
+  '/dev-broadcast': typeof DevBroadcastRoute
+  '/emergency-contacts': typeof EmergencyContactsRoute
   '/gifts': typeof GiftsRoute
   '/guests': typeof GuestsRoute
   '/intro': typeof IntroRoute
@@ -177,6 +195,8 @@ export interface FileRouteTypes {
     | '/'
     | '/album'
     | '/checklist'
+    | '/dev-broadcast'
+    | '/emergency-contacts'
     | '/gifts'
     | '/guests'
     | '/intro'
@@ -196,6 +216,8 @@ export interface FileRouteTypes {
     | '/'
     | '/album'
     | '/checklist'
+    | '/dev-broadcast'
+    | '/emergency-contacts'
     | '/gifts'
     | '/guests'
     | '/intro'
@@ -215,6 +237,8 @@ export interface FileRouteTypes {
     | '/'
     | '/album'
     | '/checklist'
+    | '/dev-broadcast'
+    | '/emergency-contacts'
     | '/gifts'
     | '/guests'
     | '/intro'
@@ -235,6 +259,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlbumRoute: typeof AlbumRoute
   ChecklistRoute: typeof ChecklistRoute
+  DevBroadcastRoute: typeof DevBroadcastRoute
+  EmergencyContactsRoute: typeof EmergencyContactsRoute
   GiftsRoute: typeof GiftsRoute
   GuestsRoute: typeof GuestsRoute
   IntroRoute: typeof IntroRoute
@@ -344,6 +370,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GiftsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/emergency-contacts': {
+      id: '/emergency-contacts'
+      path: '/emergency-contacts'
+      fullPath: '/emergency-contacts'
+      preLoaderRoute: typeof EmergencyContactsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-broadcast': {
+      id: '/dev-broadcast'
+      path: '/dev-broadcast'
+      fullPath: '/dev-broadcast'
+      preLoaderRoute: typeof DevBroadcastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checklist': {
       id: '/checklist'
       path: '/checklist'
@@ -379,6 +419,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlbumRoute: AlbumRoute,
   ChecklistRoute: ChecklistRoute,
+  DevBroadcastRoute: DevBroadcastRoute,
+  EmergencyContactsRoute: EmergencyContactsRoute,
   GiftsRoute: GiftsRoute,
   GuestsRoute: GuestsRoute,
   IntroRoute: IntroRoute,

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, Music, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   groupSongsByMoment,
   insertEventSong,
   reorderEventSong,
+  updateEventSong,
 } from "@/lib/event-songs-api";
 import { weddingQueryKeys } from "@/lib/wedding-query-keys";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
   });
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<EventSong | null>(null);
   const [momentPreset, setMomentPreset] = useState<string>(SONG_MOMENT_PRESETS[0]);
   const [customMoment, setCustomMoment] = useState("");
   const [songName, setSongName] = useState("");
@@ -48,6 +50,17 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
   const createMutation = useMutation({
     mutationFn: (input: { moment: string; songName: string; artist?: string; link?: string }) =>
       insertEventSong(timelineEventId, input),
+    onSuccess: () => invalidate(),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: { moment: string; songName: string; artist?: string; link?: string };
+    }) => updateEventSong(id, patch),
     onSuccess: () => invalidate(),
   });
 
@@ -68,6 +81,7 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
   );
 
   const resetForm = () => {
+    setEditing(null);
     setMomentPreset(SONG_MOMENT_PRESETS[0]);
     setCustomMoment("");
     setSongName("");
@@ -76,7 +90,34 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
     setError(null);
   };
 
-  const handleAdd = async () => {
+  useEffect(() => {
+    if (!formOpen) return;
+    if (editing) {
+      const preset = SONG_MOMENT_PRESETS.includes(
+        editing.moment as (typeof SONG_MOMENT_PRESETS)[number],
+      )
+        ? editing.moment
+        : CUSTOM_MOMENT;
+      setMomentPreset(preset);
+      setCustomMoment(preset === CUSTOM_MOMENT ? editing.moment : "");
+      setSongName(editing.songName);
+      setArtist(editing.artist ?? "");
+      setLink(editing.link ?? "");
+      setError(null);
+    }
+  }, [formOpen, editing]);
+
+  const openCreate = () => {
+    resetForm();
+    setFormOpen(true);
+  };
+
+  const openEdit = (song: EventSong) => {
+    setEditing(song);
+    setFormOpen(true);
+  };
+
+  const handleSave = async () => {
     const moment =
       momentPreset === CUSTOM_MOMENT ? customMoment.trim() : momentPreset.trim();
     if (!moment) {
@@ -88,19 +129,26 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
       return;
     }
     setError(null);
+    const payload = {
+      moment,
+      songName: songName.trim(),
+      artist: artist.trim() || undefined,
+      link: link.trim() || undefined,
+    };
     try {
-      await createMutation.mutateAsync({
-        moment,
-        songName: songName.trim(),
-        artist: artist.trim() || undefined,
-        link: link.trim() || undefined,
-      });
+      if (editing) {
+        await updateMutation.mutateAsync({ id: editing.id, patch: payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
       resetForm();
       setFormOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add song");
+      setError(err instanceof Error ? err.message : "Could not save song");
     }
   };
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <section className="space-y-3 border-t border-border pt-4">
@@ -115,7 +163,7 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
             variant="ghost"
             size="sm"
             className="h-8 gap-1 px-2 text-xs text-primary"
-            onClick={() => setFormOpen(true)}
+            onClick={openCreate}
           >
             <Plus className="h-3.5 w-3.5" />
             Add song
@@ -144,6 +192,7 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
                     canMoveUp={index > 0}
                     canMoveDown={index < songs.length - 1}
                     busy={deleteMutation.isPending || reorderMutation.isPending}
+                    onEdit={() => openEdit(song)}
                     onMoveUp={() => reorderMutation.mutate({ id: song.id, direction: -1 })}
                     onMoveDown={() => reorderMutation.mutate({ id: song.id, direction: 1 })}
                     onDelete={() => deleteMutation.mutate(song.id)}
@@ -157,6 +206,9 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
 
       {formOpen ? (
         <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
+          <p className="text-xs font-medium text-foreground">
+            {editing ? "Edit song" : "Add song"}
+          </p>
           <div className="space-y-2">
             <Label>Moment</Label>
             <Select value={momentPreset} onValueChange={setMomentPreset}>
@@ -224,7 +276,7 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
               type="button"
               variant="outline"
               className="flex-1"
-              disabled={createMutation.isPending}
+              disabled={saving}
               onClick={() => {
                 resetForm();
                 setFormOpen(false);
@@ -235,10 +287,10 @@ export function EventSongsSection({ timelineEventId }: { timelineEventId: string
             <Button
               type="button"
               className="flex-1"
-              disabled={createMutation.isPending}
-              onClick={() => void handleAdd()}
+              disabled={saving}
+              onClick={() => void handleSave()}
             >
-              {createMutation.isPending ? "Adding…" : "Add song"}
+              {saving ? "Saving…" : editing ? "Save changes" : "Add song"}
             </Button>
           </div>
         </div>
@@ -252,6 +304,7 @@ function SongRow({
   canMoveUp,
   canMoveDown,
   busy,
+  onEdit,
   onMoveUp,
   onMoveDown,
   onDelete,
@@ -260,13 +313,14 @@ function SongRow({
   canMoveUp: boolean;
   canMoveDown: boolean;
   busy: boolean;
+  onEdit: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDelete: () => void;
 }) {
   return (
     <li className="flex items-start gap-2 bg-card px-3 py-2.5">
-      <div className="min-w-0 flex-1">
+      <button type="button" className="min-w-0 flex-1 text-left" onClick={onEdit}>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="font-normal">
             {song.moment}
@@ -278,6 +332,7 @@ function SongRow({
               rel="noopener noreferrer"
               className="inline-flex text-muted-foreground transition-colors hover:text-primary"
               aria-label={`Open link for ${song.songName}`}
+              onClick={(e) => e.stopPropagation()}
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
@@ -287,7 +342,7 @@ function SongRow({
         {song.artist ? (
           <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
         ) : null}
-      </div>
+      </button>
 
       <div className="flex shrink-0 items-center gap-0.5">
         <button

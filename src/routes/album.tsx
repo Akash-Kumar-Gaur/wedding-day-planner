@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
-import { Camera, Copy, Trash2 } from "lucide-react";
+import { Camera, Copy, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScreenHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   getSignedPhotoUrl,
   type PhotoUpload,
 } from "@/lib/photo-album-api";
+import { downloadPhotosAsZip } from "@/lib/photo-zip";
 import { useWeddingData } from "@/lib/wedding-data";
 import { weddingQueryKeys } from "@/lib/wedding-query-keys";
 
@@ -32,6 +33,7 @@ function AlbumHostScreen() {
   const { wedding } = useWeddingData();
   const weddingId = wedding?.id;
   const queryClient = useQueryClient();
+  const [downloading, setDownloading] = useState(false);
 
   const albumQuery = useQuery({
     queryKey: weddingQueryKeys.photoAlbum(weddingId ?? ""),
@@ -65,7 +67,32 @@ function AlbumHostScreen() {
     toast.success("Guest link copied");
   };
 
+  const handleDownloadAll = async () => {
+    const uploads = uploadsQuery.data ?? [];
+    if (uploads.length === 0) return;
+    setDownloading(true);
+    try {
+      const photos = await Promise.all(
+        uploads.map(async (u) => ({
+          storagePath: u.storagePath,
+          url: await getSignedPhotoUrl(u.storagePath),
+        })),
+      );
+      const slug =
+        wedding?.coupleNames.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") ||
+        "wedding";
+      await downloadPhotosAsZip(photos, `${slug}-album`);
+      toast.success("Download started");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (!wedding) return null;
+
+  const uploadCount = uploadsQuery.data?.length ?? 0;
 
   return (
     <div>
@@ -98,12 +125,25 @@ function AlbumHostScreen() {
         </Card>
 
         <section>
-          <h2 className="mb-2 px-1 font-serif text-lg text-foreground">
-            Uploads ({uploadsQuery.data?.length ?? 0})
-          </h2>
+          <div className="mb-2 flex items-center justify-between gap-3 px-1">
+            <h2 className="font-serif text-lg text-foreground">Uploads ({uploadCount})</h2>
+            {uploadCount > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={downloading}
+                onClick={() => void handleDownloadAll()}
+              >
+                <Download className="h-3.5 w-3.5" />
+                {downloading ? "Zipping…" : "Download all"}
+              </Button>
+            ) : null}
+          </div>
           {uploadsQuery.isPending ? (
             <p className="text-sm text-muted-foreground">Loading photos…</p>
-          ) : (uploadsQuery.data?.length ?? 0) === 0 ? (
+          ) : uploadCount === 0 ? (
             <Card className="rounded-2xl p-6 text-center">
               <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
               <p className="mt-3 text-sm text-muted-foreground">

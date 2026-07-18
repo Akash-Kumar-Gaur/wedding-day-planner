@@ -36,6 +36,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CateringHeadcountNote } from "@/components/catering-headcount-note";
 import { EventSongsSection } from "@/components/event-songs-section";
+import { DatePicker } from "@/components/date-picker";
 import { TimelineCreateSheet } from "@/components/timeline-create-sheet";
 import { TimePicker } from "@/components/time-picker";
 import { ScreenHeader } from "@/components/app-shell";
@@ -109,6 +110,7 @@ function ChecklistScreen() {
     setTimelineDone,
     updateTimelineEventDetails,
     createTimelineEvent,
+    deleteTimelineEventById,
     deletePlanningTaskById,
     createPlanningTask,
     addMoreCommonlyMissedTasks,
@@ -308,6 +310,10 @@ function ChecklistScreen() {
         onClose={() => setOpenEvent(null)}
         onSave={async (id, patch) => {
           await updateTimelineEventDetails(id, patch);
+          setOpenEvent(null);
+        }}
+        onDelete={async (id) => {
+          await deleteTimelineEventById(id);
           setOpenEvent(null);
         }}
       />
@@ -998,11 +1004,11 @@ function PlanningTaskCreateSheet({
             <Label htmlFor="plan-task-date" className="inline-flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" /> Date (optional)
             </Label>
-            <Input
+            <DatePicker
               id="plan-task-date"
-              type="date"
               value={suggestedDate}
-              onChange={(e) => setSuggestedDate(e.target.value)}
+              onChange={setSuggestedDate}
+              placeholder="Select date"
             />
           </div>
           <div className="space-y-2">
@@ -1099,11 +1105,11 @@ function CommonlyMissedCreateSheet({
             <Label htmlFor="missed-date" className="inline-flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" /> Due date
             </Label>
-            <Input
+            <DatePicker
               id="missed-date"
-              type="date"
               value={suggestedDate}
-              onChange={(e) => setSuggestedDate(e.target.value)}
+              onChange={setSuggestedDate}
+              placeholder="Select date"
             />
           </div>
           <div className="space-y-2">
@@ -1201,11 +1207,11 @@ function PlanningTaskSheet({
                 <Label htmlFor="task-date" className="inline-flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Date
                 </Label>
-                <Input
+                <DatePicker
                   id="task-date"
-                  type="date"
                   value={suggestedDate}
-                  onChange={(e) => setSuggestedDate(e.target.value)}
+                  onChange={setSuggestedDate}
+                  placeholder="Select date"
                 />
               </div>
               <div className="space-y-2">
@@ -1262,6 +1268,7 @@ function TimelineEventSheet({
   event,
   onClose,
   onSave,
+  onDelete,
 }: {
   event: TimelineEvent | null;
   onClose: () => void;
@@ -1269,27 +1276,38 @@ function TimelineEventSheet({
     id: string,
     patch: Partial<Pick<TimelineEvent, "time" | "venue" | "eventDate" | "name">>,
   ) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }) {
+  const [name, setName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [time, setTime] = useState("");
   const [venue, setVenue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const open = !!event;
   const eventId = event?.id;
 
   useEffect(() => {
     if (!event) return;
+    setName(event.name);
     setEventDate(event.eventDate ?? "");
     setTime(toTimeInputValue(event.time));
     setVenue(event.venue);
+    setRemoveConfirmOpen(false);
+    setError(null);
   }, [event]);
 
   return (
     <Sheet
       open={open}
       onOpenChange={(o) => {
-        if (!o) onClose();
+        if (!o) {
+          setRemoveConfirmOpen(false);
+          onClose();
+        }
       }}
     >
       <SheetContent side="bottom">
@@ -1299,19 +1317,28 @@ function TimelineEventSheet({
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
                 {event.eventDate ? formatShortDate(event.eventDate) : "Timeline event"}
               </p>
-              <SheetTitle className="font-serif text-2xl">{event.name}</SheetTitle>
+              <SheetTitle className="font-serif text-2xl">Edit event</SheetTitle>
             </SheetHeader>
 
             <div className="mt-5 space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="event-name">Name *</Label>
+                <Input
+                  id="event-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Event name"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="event-date" className="inline-flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Date
                 </Label>
-                <Input
+                <DatePicker
                   id="event-date"
-                  type="date"
                   value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
+                  onChange={setEventDate}
+                  placeholder="Select date"
                 />
               </div>
               <div className="space-y-2">
@@ -1334,18 +1361,28 @@ function TimelineEventSheet({
 
               <EventSongsSection timelineEventId={event.id} />
 
+              {error ? <p className="text-sm text-[color:var(--destructive)]">{error}</p> : null}
+
               <Button
                 className="w-full"
-                disabled={saving}
+                disabled={saving || removing}
                 onClick={async () => {
                   if (!eventId) return;
+                  if (!name.trim()) {
+                    setError("Event name is required");
+                    return;
+                  }
                   setSaving(true);
+                  setError(null);
                   try {
                     await onSave(eventId, {
+                      name: name.trim(),
                       eventDate: eventDate || undefined,
                       time: normalizeTimeForStorage(time) || undefined,
                       venue: venue || undefined,
                     });
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Could not save event");
                   } finally {
                     setSaving(false);
                   }
@@ -1353,6 +1390,60 @@ function TimelineEventSheet({
               >
                 {saving ? "Saving…" : "Save"}
               </Button>
+
+              <div className="border-t border-border pt-4">
+                {removeConfirmOpen ? (
+                  <Card className="rounded-2xl border border-[color-mix(in_oklab,var(--destructive)_35%,transparent)] bg-[color-mix(in_oklab,var(--destructive)_8%,transparent)] p-4">
+                    <p className="text-sm text-foreground">
+                      Remove <span className="font-medium">{event.name}</span>?
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Songs and outfits linked to this event will be removed too.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        disabled={removing}
+                        onClick={() => setRemoveConfirmOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="flex-1"
+                        disabled={removing}
+                        onClick={async () => {
+                          if (!eventId) return;
+                          setRemoving(true);
+                          setError(null);
+                          try {
+                            await onDelete(eventId);
+                          } catch (err) {
+                            setError(
+                              err instanceof Error ? err.message : "Could not remove event",
+                            );
+                          } finally {
+                            setRemoving(false);
+                          }
+                        }}
+                      >
+                        {removing ? "Removing…" : "Remove"}
+                      </Button>
+                    </div>
+                  </Card>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full py-2 text-center text-sm font-medium text-[color:var(--destructive)]"
+                    onClick={() => setRemoveConfirmOpen(true)}
+                  >
+                    Remove event
+                  </button>
+                )}
+              </div>
             </div>
           </>
         ) : null}

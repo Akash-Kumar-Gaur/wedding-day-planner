@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/date-picker";
 import { TimePicker } from "@/components/time-picker";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CreateTimelineEventInput } from "@/data/wedding-types";
-import { normalizeTimeForStorage, toTimeInputValue } from "@/lib/time-utils";
+import { normalizeTimeForStorage } from "@/lib/time-utils";
 
 export function TimelineCreateSheet({
   open,
@@ -53,12 +54,7 @@ export function TimelineCreateSheet({
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-event-date">Date</Label>
-            <Input
-              id="new-event-date"
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-            />
+            <DatePicker id="new-event-date" value={eventDate} onChange={setEventDate} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-event-time">Time</Label>

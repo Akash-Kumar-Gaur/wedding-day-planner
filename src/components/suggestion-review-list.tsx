@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Calendar, Check, Pencil, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { PendingSuggestion } from "@/data/wedding-types";
@@ -122,11 +122,11 @@ function SuggestionReviewCard({
             <Label htmlFor={`date-${suggestion.id}`} className="inline-flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" /> Due date
             </Label>
-            <Input
+            <DatePicker
               id={`date-${suggestion.id}`}
-              type="date"
               value={suggestedDate}
-              onChange={(e) => handleDateChange(e.target.value)}
+              onChange={handleDateChange}
+              placeholder="Select date"
             />
           </div>
           <div className="flex gap-2">
@@ -153,11 +153,11 @@ function SuggestionReviewCard({
             <Label htmlFor={`inline-date-${suggestion.id}`} className="text-xs text-muted-foreground">
               Suggested date · {suggestedDate ? formatShortDate(suggestedDate) : "Pick a date"}
             </Label>
-            <Input
+            <DatePicker
               id={`inline-date-${suggestion.id}`}
-              type="date"
               value={suggestedDate}
-              onChange={(e) => handleDateChange(e.target.value)}
+              onChange={handleDateChange}
+              placeholder="Select date"
             />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

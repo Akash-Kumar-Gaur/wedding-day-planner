@@ -6,6 +6,7 @@ import type {
   CreateGuestInput,
   CreateTimelineEventInput,
   CreateVendorInput,
+  UpdateVendorInput,
   CreateWeddingInput,
   Guest,
   GuestGroup,
@@ -241,7 +242,47 @@ export async function inviteCollaborator(
     .single();
 
   if (error) throw error;
-  return mapCollaborator(data as CollaboratorRow);
+
+  const collaborator = mapCollaborator(data as CollaboratorRow);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: wedding } = await supabase
+    .from("weddings")
+    .select("couple_names")
+    .eq("id", weddingId)
+    .maybeSingle();
+
+  const { data: emailData, error: emailError } = await supabase.functions.invoke(
+    "send-collaborator-invite",
+    {
+      body: {
+        email: normalized,
+        coupleNames: wedding?.couple_names ?? "a wedding",
+        inviterEmail: user?.email ?? "",
+      },
+    },
+  );
+
+  const emailFailed =
+    !!emailError ||
+    (emailData &&
+      typeof emailData === "object" &&
+      "error" in emailData &&
+      !!(emailData as { error?: unknown }).error);
+
+  if (emailFailed) {
+    await supabase.from("wedding_collaborators").delete().eq("id", collaborator.id);
+    const message =
+      emailError?.message ||
+      (emailData && typeof emailData === "object" && "error" in emailData
+        ? String((emailData as { error: unknown }).error)
+        : "Failed to send invite email");
+    throw new Error(message);
+  }
+
+  return collaborator;
 }
 
 export async function createWedding(
@@ -454,6 +495,52 @@ export async function insertVendor(
   }
 
   return vendor;
+}
+
+export async function updateVendor(
+  weddingId: string,
+  vendorId: string,
+  input: UpdateVendorInput,
+): Promise<Vendor> {
+  const advance = Math.min(Math.max(0, input.advancePaid), input.totalCost);
+  const { data, error } = await supabase
+    .from("vendors")
+    .update({
+      name: input.name.trim(),
+      category: input.category,
+      contact_name: input.contactName.trim() || null,
+      phone: input.phone.trim() || null,
+      total_cost: input.totalCost,
+      advance_paid: advance,
+      due_date: input.dueDate || null,
+      status: input.status,
+      notes: input.notes?.trim() || null,
+    })
+    .eq("wedding_id", weddingId)
+    .eq("id", vendorId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const { data: payments, error: payError } = await supabase
+    .from("vendor_payments")
+    .select("*")
+    .eq("vendor_id", vendorId)
+    .order("paid_date", { ascending: false });
+  if (payError) throw payError;
+
+  return mapVendor(data as VendorRow, (payments ?? []) as PaymentRow[]);
+}
+
+/** Cascades vendor_payments (ON DELETE CASCADE). Linked transactions keep rows; vendor_id is SET NULL. */
+export async function deleteVendor(weddingId: string, vendorId: string): Promise<void> {
+  const { error } = await supabase
+    .from("vendors")
+    .delete()
+    .eq("wedding_id", weddingId)
+    .eq("id", vendorId);
+  if (error) throw error;
 }
 
 export async function insertGuestGroup(
@@ -683,6 +770,12 @@ export async function updateTimelineEvent(
 
 export async function updateTimelineEventDone(id: string, done: boolean): Promise<void> {
   await updateTimelineEvent(id, { done });
+}
+
+/** Cascades event_songs and outfit_plans (ON DELETE CASCADE). */
+export async function deleteTimelineEvent(id: string): Promise<void> {
+  const { error } = await supabase.from("timeline_events").delete().eq("id", id);
+  if (error) throw error;
 }
 
 type PlanningTaskRow = {
@@ -1046,6 +1139,7 @@ type TransactionRow = {
   amount: number;
   paid_date: string;
   note: string | null;
+  tagged_for: string[] | null;
 };
 
 function mapTransaction(row: TransactionRow): Transaction {
@@ -1057,6 +1151,7 @@ function mapTransaction(row: TransactionRow): Transaction {
     amount: Number(row.amount),
     date: row.paid_date,
     note: row.note ?? undefined,
+    taggedFor: row.tagged_for ?? [],
   };
 }
 
@@ -1085,6 +1180,7 @@ export async function insertTransaction(
       amount: input.amount,
       paid_date: input.date,
       note: input.note ?? null,
+      tagged_for: input.taggedFor?.length ? input.taggedFor : [],
     })
     .select()
     .single();
@@ -1136,6 +1232,9 @@ export async function updateTransaction(
   if (patch.categoryId !== undefined) txPayload.category_id = patch.categoryId;
   if (patch.date !== undefined) txPayload.paid_date = patch.date;
   if (patch.note !== undefined) txPayload.note = patch.note?.trim() || null;
+  if (patch.taggedFor !== undefined) {
+    txPayload.tagged_for = patch.taggedFor.length ? patch.taggedFor : [];
+  }
   if (patch.vendorName !== undefined && !existing.vendor_id) {
     txPayload.vendor_name = patch.vendorName.trim() || "Expense";
   }

@@ -7,6 +7,7 @@ import type {
   CreateGuestInput,
   CreateTimelineEventInput,
   CreateVendorInput,
+  UpdateVendorInput,
   CreateWeddingInput,
   BudgetCategory,
   GuestGroup,
@@ -44,10 +45,13 @@ import {
   insertPlanningTasks,
   deletePlanningTask,
   insertTimelineEvent,
+  deleteTimelineEvent,
   insertTransaction,
   updateTransaction,
   deleteTransaction,
   insertVendor,
+  updateVendor,
+  deleteVendor,
   inviteCollaborator,
   recordVendorPayment,
   removePendingSuggestion,
@@ -94,6 +98,7 @@ type WeddingDataContextValue = WeddingBundle & {
     patch: Partial<Pick<TimelineEvent, "time" | "name" | "venue" | "dressCode" | "eventDate">>,
   ) => Promise<void>;
   createTimelineEvent: (input: CreateTimelineEventInput) => Promise<void>;
+  deleteTimelineEventById: (id: string) => Promise<void>;
   updatePlanningTaskDetails: (
     id: string,
     patch: Partial<Pick<PlanningTask, "done" | "suggestedDate" | "eventTime" | "venue" | "task">>,
@@ -129,6 +134,8 @@ type WeddingDataContextValue = WeddingBundle & {
   ) => Promise<void>;
   deleteBudgetCategory: (id: string) => Promise<void>;
   createVendor: (input: CreateVendorInput) => Promise<void>;
+  updateVendorDetails: (id: string, input: UpdateVendorInput) => Promise<void>;
+  deleteVendorById: (id: string) => Promise<void>;
   createGuestGroup: (input: CreateGuestGroupInput) => Promise<GuestGroup>;
   createGuest: (input: CreateGuestInput) => Promise<void>;
   updateGuestDetails: (id: string, patch: UpdateGuestInput) => Promise<void>;
@@ -324,6 +331,10 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       await inv.timelineEvents();
       if (Object.keys(patches).length) await inv.meta();
     },
+    deleteTimelineEventById: async (id) => {
+      await deleteTimelineEvent(id);
+      await inv.timelineEvents();
+    },
     updatePlanningTaskDetails: async (id, patch) => {
       const weddingId = bundle.wedding?.id;
       if (!weddingId) return;
@@ -480,6 +491,19 @@ export function WeddingDataProvider({ children }: { children: ReactNode }) {
       await insertVendor(weddingId, input, bundle.budgetCategories);
       await inv.vendors();
       await inv.budgetCategories();
+    },
+    updateVendorDetails: async (id, input) => {
+      const weddingId = bundle.wedding?.id;
+      if (!weddingId) throw new Error("No wedding loaded");
+      await updateVendor(weddingId, id, input);
+      await inv.vendors();
+    },
+    deleteVendorById: async (id) => {
+      const weddingId = bundle.wedding?.id;
+      if (!weddingId) throw new Error("No wedding loaded");
+      await deleteVendor(weddingId, id);
+      await inv.vendors();
+      await inv.wallet();
     },
     createGuestGroup: async (input) => {
       const weddingId = bundle.wedding?.id;

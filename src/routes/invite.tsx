@@ -8,6 +8,7 @@ import { INVITE_THEMES, INVITE_THEME_IDS } from "@/components/invite-themes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import type { TimelineEvent } from "@/data/wedding-types";
 import { fetchInviteForGroup, fetchInviteForGuest, upsertInvite } from "@/lib/invite-api";
 import {
@@ -54,6 +55,7 @@ function InviteScreen() {
   const [savedInviteId, setSavedInviteId] = useState<string | undefined>();
   const [restored, setRestored] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const guest = guestId ? guests.find((g) => g.id === guestId) : undefined;
   const group = groupId ? guestGroups.find((g) => g.id === groupId) : undefined;
@@ -75,28 +77,55 @@ function InviteScreen() {
     setTheme("floral");
     setSavedInviteId(undefined);
     setRestored(false);
+    setShowCompleted(false);
   }, [guestId, groupId]);
 
   useEffect(() => {
     if (restored || !savedQuery.data) return;
-    setSelectedIds(new Set(savedQuery.data.eventIds));
+    const ids = new Set(savedQuery.data.eventIds);
+    setSelectedIds(ids);
     setTheme(savedQuery.data.theme);
     setSavedInviteId(savedQuery.data.id);
+    const hasCompleted = timelineEvents.some((e) => ids.has(e.id) && e.done);
+    if (hasCompleted) setShowCompleted(true);
     setRestored(true);
-  }, [savedQuery.data, restored]);
+  }, [savedQuery.data, restored, timelineEvents]);
 
-  const eventDates = useMemo(() => distinctEventDates(timelineEvents), [timelineEvents]);
+  const completedCount = useMemo(
+    () => timelineEvents.filter((e) => e.done).length,
+    [timelineEvents],
+  );
+
+  const visibleEvents = useMemo(
+    () => (showCompleted ? timelineEvents : timelineEvents.filter((e) => !e.done)),
+    [timelineEvents, showCompleted],
+  );
+
+  // Drop selections that disappear from the checklist (e.g. marked done mid-flow).
+  useEffect(() => {
+    if (showCompleted) return;
+    setSelectedIds((prev) => {
+      const next = new Set(
+        [...prev].filter((id) => {
+          const event = timelineEvents.find((e) => e.id === id);
+          return !event || !event.done;
+        }),
+      );
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [timelineEvents, showCompleted]);
+
+  const eventDates = useMemo(() => distinctEventDates(visibleEvents), [visibleEvents]);
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>();
     for (const date of eventDates) {
-      map.set(
-        date,
-        timelineEvents.filter((e) => e.eventDate === date),
-      );
+      const events = visibleEvents.filter((e) => e.eventDate === date);
+      if (events.length > 0) map.set(date, events);
     }
     return map;
-  }, [timelineEvents, eventDates]);
+  }, [visibleEvents, eventDates]);
 
   const selectedEvents = useMemo(
     () => timelineEvents.filter((e) => selectedIds.has(e.id)),
@@ -231,7 +260,19 @@ function InviteScreen() {
         </div>
 
         <section>
-          <h2 className="mb-2 px-1 font-serif text-lg text-foreground">Events</h2>
+          <div className="mb-2 flex items-center justify-between gap-3 px-1">
+            <h2 className="font-serif text-lg text-foreground">Events</h2>
+            {completedCount > 0 ? (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Switch
+                  checked={showCompleted}
+                  onCheckedChange={setShowCompleted}
+                  aria-label="Show completed events"
+                />
+                Show completed
+              </label>
+            ) : null}
+          </div>
           <Card className="divide-y divide-border rounded-2xl p-0">
             {[...eventsByDate.entries()].map(([date, events], index) => (
               <div key={date} className="px-4 py-3">
@@ -248,7 +289,14 @@ function InviteScreen() {
                           className="mt-0.5"
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="text-sm font-medium text-foreground">{event.name}</span>
+                          <span className="text-sm font-medium text-foreground">
+                            {event.name}
+                            {event.done ? (
+                              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                (completed)
+                              </span>
+                            ) : null}
+                          </span>
                           <span className="mt-0.5 block text-xs text-muted-foreground">
                             {formatDisplayTime(event.time)} · {event.venue}
                           </span>
@@ -261,7 +309,9 @@ function InviteScreen() {
             ))}
             {eventsByDate.size === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-                No timeline events yet — add them from your checklist.
+                {timelineEvents.length === 0
+                  ? "No timeline events yet — add them from your checklist."
+                  : "No upcoming events — turn on “Show completed” to include past ones."}
               </p>
             ) : null}
           </Card>

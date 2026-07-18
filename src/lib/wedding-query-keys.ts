@@ -14,6 +14,7 @@ export const weddingQueryKeys = {
   gifts: (weddingId: string) => ["gifts", weddingId] as const,
   photoAlbum: (weddingId: string) => ["photo-album", weddingId] as const,
   photoUploads: (albumId: string) => ["photo-uploads", albumId] as const,
+  emergencyContacts: (weddingId: string) => ["emergency-contacts", weddingId] as const,
 };
 
 export const realtimeTableQueryKey = {

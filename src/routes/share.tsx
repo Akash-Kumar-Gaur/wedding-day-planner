@@ -81,8 +81,9 @@ function ShareScreen() {
             </Button>
             {lastInvited ? (
               <p className="rounded-xl bg-secondary/60 p-3 text-sm text-muted-foreground">
-                Tell <span className="font-medium text-foreground">{lastInvited}</span> to sign in
-                to ShadiPlan with that exact email — they&apos;ll automatically get access.
+                Invite email sent to{" "}
+                <span className="font-medium text-foreground">{lastInvited}</span>. They can sign
+                in at shadiplan.redevolve.in with that email to get access.
               </p>
             ) : null}
           </Card>

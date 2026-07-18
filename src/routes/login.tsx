@@ -231,17 +231,24 @@ function LoginScreen() {
             ) : null}
           </div>
 
-          <p className="mt-auto pt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-            By continuing, you agree to ShadiPlan&apos;s{" "}
-            <Link to="/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="text-primary hover:underline">
-              Privacy Policy
-            </Link>
-            .
-          </p>
+          <div className="mt-auto space-y-3 pt-4 text-center">
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <Link to="/intro" className="text-muted-foreground underline-offset-2 hover:underline">
+                New here? See what ShadiPlan does
+              </Link>
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              By continuing, you agree to ShadiPlan&apos;s{" "}
+              <Link to="/terms" className="text-primary hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" className="text-primary hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </div>
 
           <div className="mt-3 flex shrink-0 justify-center" aria-hidden>
             <span

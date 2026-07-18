@@ -18,6 +18,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScreenHeader } from "@/components/app-shell";
 import { SetBudgetSheet } from "@/components/set-budget-sheet";
+import { TaggedForPicker } from "@/components/tagged-for-picker";
 import { formatINR, shortDate, type BudgetCategory, type Transaction } from "@/data/wedding";
 import type { UpdateExpenseInput } from "@/data/wedding-types";
 import { useWeddingData } from "@/lib/wedding-data";
@@ -66,6 +67,7 @@ function WalletScreen() {
   const [vendorName, setVendorName] = useState("");
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState("");
+  const [taggedFor, setTaggedFor] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +91,7 @@ function WalletScreen() {
     setVendorName("");
     setDate(todayIso());
     setNote("");
+    setTaggedFor([]);
     setError(null);
   };
 
@@ -135,6 +138,7 @@ function WalletScreen() {
         vendorName: vendorName.trim() || undefined,
         date,
         note: note.trim() || undefined,
+        taggedFor: taggedFor.length ? taggedFor : undefined,
       });
       toast.success("Expense logged");
       setSheetOpen(false);
@@ -303,6 +307,18 @@ function WalletScreen() {
                           {shortDate(t.date)}
                           {t.note ? ` · ${t.note}` : ""}
                         </p>
+                        {t.taggedFor && t.taggedFor.length > 0 ? (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {t.taggedFor.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                       <p className="shrink-0 text-sm font-semibold text-foreground">
                         − {formatINR(t.amount)}
@@ -403,6 +419,8 @@ function WalletScreen() {
                 </div>
               </Card>
             ) : null}
+
+            <TaggedForPicker value={taggedFor} onChange={setTaggedFor} />
 
             <div className="space-y-2">
               <Label htmlFor="expense-vendor">Paid to (optional)</Label>
@@ -700,8 +718,10 @@ function TransactionEditSheet({
   const [vendorName, setVendorName] = useState("");
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState("");
+  const [taggedFor, setTaggedFor] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const open = !!transaction;
@@ -714,7 +734,9 @@ function TransactionEditSheet({
     setVendorName(transaction.vendorName);
     setDate(transaction.date);
     setNote(transaction.note ?? "");
+    setTaggedFor(transaction.taggedFor ?? []);
     setError(null);
+    setRemoveConfirmOpen(false);
   }, [transaction, budgetCategories]);
 
   const handleSave = async () => {
@@ -738,6 +760,7 @@ function TransactionEditSheet({
         vendorName: vendorLinked ? undefined : vendorName.trim() || undefined,
         date,
         note: note.trim() || undefined,
+        taggedFor,
       });
       toast.success("Transaction updated");
       onClose();
@@ -767,7 +790,10 @@ function TransactionEditSheet({
     <Sheet
       open={open}
       onOpenChange={(o) => {
-        if (!o) onClose();
+        if (!o) {
+          setRemoveConfirmOpen(false);
+          onClose();
+        }
       }}
     >
       <SheetContent side="bottom">
@@ -844,19 +870,53 @@ function TransactionEditSheet({
                 />
               </div>
 
+              <TaggedForPicker value={taggedFor} onChange={setTaggedFor} />
+
               {error ? <p className="text-sm text-[color:var(--destructive)]">{error}</p> : null}
 
               <Button className="w-full" disabled={saving || deleting} onClick={handleSave}>
                 {saving ? "Saving…" : "Save changes"}
               </Button>
-              <Button
-                variant="ghost"
-                className="w-full text-[color:var(--destructive)]"
-                disabled={saving || deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? "Removing…" : "Remove transaction"}
-              </Button>
+
+              <div className="border-t border-border pt-4">
+                {removeConfirmOpen ? (
+                  <Card className="rounded-2xl border border-[color-mix(in_oklab,var(--destructive)_35%,transparent)] bg-[color-mix(in_oklab,var(--destructive)_8%,transparent)] p-4">
+                    <p className="text-sm text-foreground">Remove this transaction?</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Category spend totals will update immediately.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        disabled={deleting}
+                        onClick={() => setRemoveConfirmOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="flex-1"
+                        disabled={deleting}
+                        onClick={() => void handleDelete()}
+                      >
+                        {deleting ? "Removing…" : "Remove"}
+                      </Button>
+                    </div>
+                  </Card>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full py-2 text-center text-sm font-medium text-[color:var(--destructive)]"
+                    disabled={saving || deleting}
+                    onClick={() => setRemoveConfirmOpen(true)}
+                  >
+                    Remove transaction
+                  </button>
+                )}
+              </div>
             </div>
           </>
         ) : null}

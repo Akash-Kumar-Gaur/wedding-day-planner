@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Gift as GiftIcon, Plus, X } from "lucide-react";
 import { ScreenHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -47,11 +47,13 @@ function GiftsScreen() {
 
   const [filter, setFilter] = useState<Filter>("thanks_pending");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState<Gift | null>(null);
   const [giverName, setGiverName] = useState("");
   const [guestId, setGuestId] = useState<string | undefined>();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [thankYouSent, setThankYouSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestQuery, setGuestQuery] = useState("");
 
@@ -112,16 +114,42 @@ function GiftsScreen() {
   });
 
   const resetForm = () => {
+    setEditing(null);
     setGiverName("");
     setGuestId(undefined);
     setAmount("");
     setDescription("");
     setNotes("");
+    setThankYouSent(false);
     setGuestQuery("");
     setError(null);
   };
 
-  const handleCreate = async () => {
+  useEffect(() => {
+    if (!sheetOpen) return;
+    if (editing) {
+      setGiverName(editing.giverName);
+      setGuestId(editing.guestId);
+      setAmount(editing.amount != null ? String(editing.amount) : "");
+      setDescription(editing.giftDescription ?? "");
+      setNotes(editing.notes ?? "");
+      setThankYouSent(editing.thankYouSent);
+      setGuestQuery(editing.giverName);
+      setError(null);
+    }
+  }, [sheetOpen, editing]);
+
+  const openCreate = () => {
+    resetForm();
+    setSheetOpen(true);
+  };
+
+  const openEdit = (gift: Gift) => {
+    setEditing(gift);
+    setSheetOpen(true);
+  };
+
+  const handleSave = async () => {
     if (!giverName.trim()) {
       setError("Giver name is required");
       return;
@@ -133,13 +161,19 @@ function GiftsScreen() {
     }
     setError(null);
     try {
-      await createMutation.mutateAsync({
+      const payload = {
         giverName: giverName.trim(),
         guestId,
         amount: parsedAmount,
         giftDescription: description.trim() || undefined,
         notes: notes.trim() || undefined,
-      });
+        thankYouSent,
+      };
+      if (editing) {
+        await updateMutation.mutateAsync({ id: editing.id, patch: payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
       resetForm();
       setSheetOpen(false);
     } catch (err) {
@@ -150,6 +184,7 @@ function GiftsScreen() {
   if (!wedding) return null;
 
   const pendingCount = gifts.filter((g) => !g.thankYouSent).length;
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div>
@@ -194,7 +229,11 @@ function GiftsScreen() {
           <Card className="divide-y divide-border rounded-2xl p-0">
             {filtered.map((gift) => (
               <div key={gift.id} className="flex items-start gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={() => openEdit(gift)}
+                >
                   <p className="text-sm font-medium text-foreground">{gift.giverName}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {gift.amount != null ? formatINR(gift.amount) : null}
@@ -204,30 +243,39 @@ function GiftsScreen() {
                   {gift.notes ? (
                     <p className="mt-1 text-xs text-muted-foreground">{gift.notes}</p>
                   ) : null}
-                  <label className="mt-2 flex items-center gap-2 text-xs text-foreground">
+                </button>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <label
+                    className="flex items-center gap-2 text-xs text-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Switch
                       checked={gift.thankYouSent}
                       onCheckedChange={(checked) =>
                         updateMutation.mutate({ id: gift.id, patch: { thankYouSent: checked } })
                       }
                     />
-                    Thank you sent
+                    Thanks
                   </label>
+                  <button
+                    type="button"
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label={`Remove gift from ${gift.giverName}`}
+                    onClick={() => {
+                      if (window.confirm(`Remove gift from ${gift.giverName}?`)) {
+                        deleteMutation.mutate(gift.id);
+                      }
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  aria-label={`Remove gift from ${gift.giverName}`}
-                  onClick={() => deleteMutation.mutate(gift.id)}
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             ))}
           </Card>
         )}
 
-        <Button className="w-full gap-2" onClick={() => setSheetOpen(true)}>
+        <Button className="w-full gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           Add gift
         </Button>
@@ -242,7 +290,9 @@ function GiftsScreen() {
       >
         <SheetContent side="bottom">
           <SheetHeader className="text-left">
-            <SheetTitle className="font-serif text-2xl">Add gift</SheetTitle>
+            <SheetTitle className="font-serif text-2xl">
+              {editing ? "Edit gift" : "Add gift"}
+            </SheetTitle>
           </SheetHeader>
 
           <div className="mt-5 space-y-4">
@@ -308,14 +358,23 @@ function GiftsScreen() {
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
             </div>
 
+            {editing ? (
+              <div className="flex items-center justify-between rounded-2xl border border-border px-4 py-3">
+                <Label htmlFor="gift-thanks" className="cursor-pointer">
+                  Thank you sent
+                </Label>
+                <Switch
+                  id="gift-thanks"
+                  checked={thankYouSent}
+                  onCheckedChange={setThankYouSent}
+                />
+              </div>
+            ) : null}
+
             {error ? <p className="text-sm text-[color:var(--destructive)]">{error}</p> : null}
 
-            <Button
-              className="w-full"
-              disabled={createMutation.isPending}
-              onClick={() => void handleCreate()}
-            >
-              {createMutation.isPending ? "Saving…" : "Save gift"}
+            <Button className="w-full" disabled={saving} onClick={() => void handleSave()}>
+              {saving ? "Saving…" : editing ? "Save changes" : "Save gift"}
             </Button>
           </div>
         </SheetContent>

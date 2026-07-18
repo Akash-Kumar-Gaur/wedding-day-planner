@@ -14,6 +14,13 @@ export type PhotoUpload = {
   createdAt: string;
 };
 
+export type GuestMyUpload = {
+  id: string;
+  deleteToken: string;
+  storagePath: string;
+  uploadedAt: string;
+};
+
 type AlbumRow = {
   id: string;
   wedding_id: string;
@@ -46,6 +53,40 @@ function mapUpload(row: UploadRow): PhotoUpload {
   };
 }
 
+function myUploadsKey(token: string): string {
+  return `album-${token}-my-uploads`;
+}
+
+export function loadMyUploads(token: string): GuestMyUpload[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(myUploadsKey(token));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as GuestMyUpload[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveMyUpload(
+  token: string,
+  upload: { id: string; deleteToken: string; storagePath: string },
+): GuestMyUpload[] {
+  const next: GuestMyUpload[] = [
+    ...loadMyUploads(token),
+    { ...upload, uploadedAt: new Date().toISOString() },
+  ];
+  localStorage.setItem(myUploadsKey(token), JSON.stringify(next));
+  return next;
+}
+
+export function removeMyUpload(token: string, uploadId: string): GuestMyUpload[] {
+  const next = loadMyUploads(token).filter((u) => u.id !== uploadId);
+  localStorage.setItem(myUploadsKey(token), JSON.stringify(next));
+  return next;
+}
+
 export async function ensurePhotoAlbum(weddingId: string): Promise<PhotoAlbum> {
   const { data: existing, error: fetchError } = await supabase
     .from("photo_albums")
@@ -66,10 +107,11 @@ export async function ensurePhotoAlbum(weddingId: string): Promise<PhotoAlbum> {
   return mapAlbum(data as AlbumRow);
 }
 
+/** Host gallery — never selects delete_token (column revoked + explicit list). */
 export async function fetchAlbumUploads(albumId: string): Promise<PhotoUpload[]> {
   const { data, error } = await supabase
     .from("photo_uploads")
-    .select("*")
+    .select("id, album_id, storage_path, uploader_name, created_at")
     .eq("album_id", albumId)
     .order("created_at", { ascending: false });
 
@@ -96,15 +138,20 @@ export async function deletePhotoUpload(upload: PhotoUpload): Promise<void> {
   if (error) throw error;
 }
 
-/** Guest upload path — no auth session required (anon key). */
+export type GuestUploadResult = {
+  id: string;
+  deleteToken: string;
+  storagePath: string;
+};
+
+/** Guest upload path — no auth session required (anon key). Returns delete token once. */
 export async function uploadGuestPhoto(input: {
   token: string;
   file: File;
   uploaderName?: string;
-}): Promise<string> {
+}): Promise<GuestUploadResult> {
   const ext = input.file.name.split(".").pop()?.toLowerCase() || "jpg";
   const safeExt = ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(ext) ? ext : "jpg";
-  // Must match upload_photo_via_token path check: guest/<token>/...
   const storagePath = `guest/${input.token}/${crypto.randomUUID()}.${safeExt}`;
 
   const { error: uploadError } = await supabase.storage
@@ -127,7 +174,31 @@ export async function uploadGuestPhoto(input: {
     throw error;
   }
 
-  return data as string;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.id || !row?.delete_token) {
+    await supabase.storage.from("wedding-photos").remove([storagePath]);
+    throw new Error("Upload registered without a delete token");
+  }
+
+  return {
+    id: row.id as string,
+    deleteToken: row.delete_token as string,
+    storagePath,
+  };
+}
+
+/** Guest delete via ownership token; RPC also removes the Storage object. */
+export async function deleteGuestPhoto(input: {
+  uploadId: string;
+  deleteToken: string;
+}): Promise<boolean> {
+  const { data, error } = await supabase.rpc("delete_photo_via_token", {
+    p_upload_id: input.uploadId,
+    p_delete_token: input.deleteToken,
+  });
+
+  if (error) throw error;
+  return data === true;
 }
 
 /** Public token validation + couple names for the guest upload page. */
@@ -144,6 +215,9 @@ export async function fetchGuestAlbumInfo(
   return { coupleNames: row.couple_names as string };
 }
 
-export function albumGuestUrl(accessToken: string, origin = typeof window !== "undefined" ? window.location.origin : ""): string {
+export function albumGuestUrl(
+  accessToken: string,
+  origin = typeof window !== "undefined" ? window.location.origin : "",
+): string {
   return `${origin}/album/${accessToken}`;
 }
