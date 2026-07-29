@@ -68,6 +68,20 @@
   --color-warning-foreground: var(--warning-foreground);
   --font-serif: "Fraunces", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Intro landing page tokens — additive; do not replace app semantic colors */
+  --color-ivory: #fbf6ec;
+  --color-ivory2: #f4ecdb;
+  --color-ink: #241019;
+  --color-ink2: #38202a;
+  --color-haldi: #c99a2e;
+  --color-haldi2: #e4b94f;
+  --color-mehendi: #4b5d3a;
+  --color-shaadi: #8c1f3b;
+  --color-taupe: #e7dcc7;
+  --color-taupe2: #d9c9a9;
+  --font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-body: Manrope, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 :root {
@@ -206,6 +220,66 @@
 
 .splash-loader-dot--3 {
   animation-delay: 0.3s;
+}
+
+/* Intro landing — ticket fan cards (CSS animation swap point for later motion work) */
+@layer components {
+  .ticket-card {
+    transform: translate(var(--x), var(--y)) rotate(var(--r));
+    transition:
+      transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.35s ease;
+    animation: fanIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: var(--d);
+    opacity: 0;
+  }
+  .ticket-card:hover {
+    transform: translate(var(--x), calc(var(--y) - 22px)) rotate(calc(var(--r) * 0.35));
+    z-index: 10;
+  }
+  .ticket-card::before,
+  .ticket-card::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    top: 52px;
+    border: 1px solid #d9c9a9;
+    background: #fbf6ec;
+  }
+  .ticket-card::before {
+    left: -8px;
+    border-right: none;
+  }
+  .ticket-card::after {
+    right: -8px;
+    border-left: none;
+  }
+  .ticket-card--dark::before,
+  .ticket-card--dark::after {
+    background: #241019;
+    border-color: #4a2c39;
+  }
+}
+
+@keyframes fanIn {
+  from {
+    transform: translate(0, 50px) rotate(0deg) scale(0.86);
+    opacity: 0;
+  }
+  to {
+    transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket-card {
+    animation: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
 }
 
 @keyframes wedding-loader-spin {
